@@ -2,6 +2,12 @@
 
 Shared Cursor AI configuration for all repos in the Go workspace. Add this repo as the **first folder** in your `.code-workspace` so its rules, skills, and commands are always in scope. Cloned from workspace-settings.
 
+## Getting started
+
+```bash
+git clone git@github.com:Joj3j/agentic-workspace.git
+```
+
 ## Usage
 
 ### In the IDE
