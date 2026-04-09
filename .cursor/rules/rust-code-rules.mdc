@@ -1,0 +1,87 @@
+---
+description: Rust code quality rules and guidelines. Only active for Rust projects.
+globs: ["**/*.rs", "**/Cargo.toml", "**/Cargo.lock"]
+---
+
+# Rust Coding Standards & AI Rules
+
+**If the project is not using RUST language: do not run any of the rules below; only report that the project is not Rust.**
+
+You are an expert in Rust, async programming, and concurrent systems. Always adhere to these rules:
+
+## 1. Principles & Conventions
+
+- Write clear, concise, idiomatic Rust; prioritize modularity, clean organization, and efficient resource management.
+- **Naming:** Use `snake_case` for variables and functions; `PascalCase` for types and structs. Use expressive names (e.g. `is_ready`, `has_data`).
+- Avoid duplication; use functions and modules for reusable logic. Embrace ownership and the type system for safety, concurrency, and performance.
+- Structure code into modules: separate networking, data access, and business logic. Use environment variables for config (e.g. `dotenv`). Document with **Rustdoc** and inline comments.
+
+## 2. Performance & Memory
+
+- Minimize unnecessary `.clone()` calls and prefer borrowing.
+- Identify and eliminate unnecessary allocations.
+- Use `Arc<str>` instead of `Arc<String>` for immutable shared strings.
+- Replace `String` with `&str` where ownership is not needed.
+- Use `Cow<str>` for conditional cloning scenarios.
+- Optimize for zero-cost abstractions where applicable.
+- Reduce memory footprint by choosing appropriate smart pointer types.
+- Use iterators instead of collecting into intermediate vectors where possible.
+- Replace `.collect()` with iterator consumers where possible.
+
+## 3. Idiomatic Patterns
+
+- Use idiomatic Rust patterns; prefer the builder pattern for complex initialization.
+- Apply the typestate pattern for compile-time safety where it fits.
+- Replace manual error handling with the `?` operator.
+- Use `match` instead of multiple `if let` chains when it improves clarity.
+- Apply the newtype pattern for type safety.
+- Use the entry API for `HashMap` operations.
+- Prefer functional transformations over mutable state where reasonable.
+
+## 4. Error Handling
+
+- Use `Result` and `Option`; propagate errors with `?`. Use `thiserror` or `anyhow` for custom or contextual errors.
+- Handle errors and edge cases early. Use `.await` at safe points to avoid surprising context switches in async code.
+- Implement proper error types with `thiserror`; create a custom error hierarchy per module where needed.
+- Replace `unwrap()` with proper error propagation. Use `Result` instead of `Option` when error context is useful.
+- Add context to errors using `.context()` or `.with_context()` where available.
+
+## 5. Async & Concurrency
+
+- **Runtime:** Use `tokio` as the async runtime. Use `async fn`, `tokio::spawn` for tasks, and `tokio::select!` for multiple futures and cancellation. Prefer structured concurrency and clear cancellation paths.
+- **Channels:** Use `tokio::sync::mpsc` for async multi-producer single-consumer; `tokio::sync::broadcast` for multiple consumers; `tokio::sync::oneshot` for one-time communication. Prefer bounded channels for backpressure. Use `tokio::sync::Mutex` and `tokio::sync::RwLock` for shared state across async tasks; avoid deadlocks.
+- **Time:** Use `tokio::time::sleep` and `tokio::time::interval` for time-based logic. Implement timeouts, retries, and backoff for robustness.
+- **Performance:** Minimize async overhead; use sync code where async is unnecessary. Avoid blocking inside async functions; offload to `spawn_blocking` or `block_in_place` when needed. Use `tokio::task::yield_now()` for cooperative yielding. Reduce lock contention and hold duration.
+- Make functions async-friendly where they perform I/O or wait; implement proper async cancellation handling.
+
+## 6. API Design
+
+- Design zero-cost abstraction APIs where applicable.
+- Hide implementation details behind a clean public interface.
+- Make the API harder to misuse through types.
+- Use GATs (Generic Associated Types) for better API flexibility when needed.
+- Apply const generics where appropriate.
+
+## 7. Code Organization
+
+- Split code into smaller, focused modules.
+- Reduce coupling between components.
+- Extract common patterns into traits.
+- Use feature flags for optional dependencies.
+
+## 8. Testing
+
+- Use `#[tokio::test]` for async tests.
+- Use `tokio::time::pause()` (or equivalent) for time-dependent tests without real delays.
+- Add integration tests for async and concurrency behavior.
+- Mock or fake external dependencies in tests.
+
+## 9. Ecosystem & Tooling
+
+- **Runtime & I/O:** Use `tokio` for async; `hyper` or `reqwest` for HTTP; `serde` for (de)serialization; `sqlx` or `tokio-postgres` for async DB; `tonic` for gRPC. Choose crates that fit the project (e.g. netconf worker: tokio, serde, async I/O).
+- Prefer stable, well-maintained crates; keep dependencies up to date.
+- Run `cargo clippy` and `cargo fmt`; integrate both in CI.
+
+## 10. Reference
+
+- Additional guidance aligned with [cursor.directory/rules/rust](https://cursor.directory/rules/rust) (async, tokio, channels, testing, performance). Cosmos/Solana-specific rules on that page do not apply unless the project targets those ecosystems.

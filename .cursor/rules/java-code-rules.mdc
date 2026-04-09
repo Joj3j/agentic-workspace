@@ -1,0 +1,81 @@
+---
+description: Java code quality rules and guidelines. Only active for Java projects.
+globs: ["**/*.java", "**/pom.xml", "**/build.gradle", "**/build.gradle.kts"]
+---
+
+# Java Coding Standards & AI Rules
+
+**If the project is not using Java: do not run any of the rules below; only report that the project is not Java.**
+
+You are an expert in Java programming, Spring Boot, Maven, JUnit, and related Java technologies. Always adhere to these rules:
+
+## 1. Code Style & Structure
+
+- Write clean, efficient, and well-documented Java code. Use Spring Boot best practices and conventions when the project uses Spring Boot.
+- Use descriptive method and variable names following **camelCase**. Use **PascalCase** for class names (e.g. `UserController`, `OrderService`). Use **ALL_CAPS** for constants (e.g. `MAX_RETRY_ATTEMPTS`, `DEFAULT_PAGE_SIZE`).
+- Structure applications: controllers, services, repositories, models, configurations. Follow RESTful API design when creating web services.
+- Use Java 17 or later features when applicable (e.g. records, sealed classes, pattern matching).
+
+## 2. Logging (SLF4J)
+
+- Use **SLF4J** (`org.slf4j`) for all logging. Depend on `slf4j-api-*.jar`; use a binding such as Logback or Log4j2 at runtime.
+- Obtain a logger per class: `private static final Logger log = LoggerFactory.getLogger(MyClass.class);` (or use Lombok `@Slf4j` if the project uses it).
+- **Check level before logging** when the log message or arguments are expensive to compute. Use the appropriate `isXxxEnabled()` guard so that disabled levels do not incur cost:
+  - `if (log.isTraceEnabled()) { log.trace("...", expensive()); }`
+  - `if (log.isDebugEnabled()) { log.debug("...", expensive()); }`
+  - `if (log.isInfoEnabled()) { log.info("..."); }` (when message construction is costly)
+- Use proper log levels: **ERROR** for errors, **WARN** for recoverable issues, **INFO** for key events, **DEBUG** for developer detail, **TRACE** for fine-grained diagnostics.
+- Use parameterized messages: `log.info("User {} logged in", userId)` instead of string concatenation. Do not log secrets or PII.
+
+## 3. Spring Boot (when applicable)
+
+- Use Spring Boot starters for dependency management. Use annotations correctly (e.g. `@SpringBootApplication`, `@RestController`, `@Service`, `@Repository`).
+- Use Spring Boot auto-configuration effectively. Implement exception handling with `@ControllerAdvice` and `@ExceptionHandler`.
+- Use **constructor injection** over field injection for testability. Use Spring Data JPA for database operations when applicable.
+- Use Bean Validation (e.g. `@Valid`, custom validators) for input validation.
+
+## 4. Configuration & Properties
+
+- Use `application.properties` or `application.yml` for configuration. Use environment-specific config via **Spring Profiles** (e.g. dev, test, prod).
+- Use `@ConfigurationProperties` for type-safe configuration when using Spring Boot.
+
+## 5. Testing
+
+- Write unit tests with **JUnit 5** and Spring Boot Test. Use **MockMvc** for web layer tests.
+- Use `@SpringBootTest` for integration tests. Use `@DataJpaTest` for repository layer tests when using Spring Data JPA.
+- Prefer constructor injection and interfaces to simplify mocking.
+
+## 6. Exception Handling
+
+- Implement consistent exception handling (e.g. `@ControllerAdvice`, `@ExceptionHandler`). Use appropriate HTTP status codes and error response bodies for APIs.
+- Do not swallow exceptions; log and rethrow or translate as appropriate.
+
+## 7. Performance & Scalability
+
+- Use Spring Cache abstraction for caching when appropriate. Use `@Async` for non-blocking operations where it fits the design.
+- Implement proper database indexing and query optimization. Avoid N+1 queries when using JPA.
+
+## 8. Security
+
+- Use **Spring Security** for authentication and authorization when the application exposes protected resources.
+- Use proper password encoding (e.g. BCrypt). Configure CORS when the API is consumed by browsers.
+
+## 9. API Documentation & Data Access
+
+- Use **Springdoc OpenAPI** (or Swagger) for API documentation when exposing REST APIs.
+- Use Spring Data JPA with proper entity relationships and cascading. Use schema migrations (e.g. Flyway, Liquibase) when applicable.
+
+## 10. Build & Deployment
+
+- Use **Maven** (or Gradle) for dependency management and builds. Use profiles for different environments (dev, test, prod).
+- Use Docker for containerization when the project deploys to containers.
+
+## 11. General Principles
+
+- Follow **SOLID** principles; maintain high cohesion and low coupling.
+- Prefer RESTful design (correct HTTP methods, status codes). Consider microservices patterns when the system is split into services.
+- Use asynchronous processing (`@Async`) or reactive (e.g. WebFlux) when non-blocking behavior is required.
+
+## 12. Reference
+
+- Additional guidance aligned with [cursor.directory/rules/java](https://cursor.directory/rules/java) (Spring Boot, Quarkus, Jakarta EE, MicroProfile). Use framework-specific rules (e.g. Quarkus, Vert.x) only when the project uses those stacks.

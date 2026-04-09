@@ -1,0 +1,110 @@
+---
+description: Go code quality prompts and guidelines. Only active for Golang projects.
+globs: ["**/*.go"]
+---
+
+# Go Coding Standards & AI Rules
+
+**If the project does not use Go, do not apply these rules; only report that the project is not Go.**
+
+You are an expert Go (Golang) developer. Always adhere to these idiomatic patterns:
+
+## 1. Code Style & Formatting
+- Always format code with `go fmt` and manage imports with `goimports`.
+- **Import grouping**: Group stdlib, then third-party, then repo module and shared libs.
+- Use `camelCase` for private identifiers and `PascalCase` for exported ones. No `snake_case`.
+- Favor the **Standard Library** over external dependencies unless a specialized library is requested.
+
+## 2. Error Handling
+- **Never ignore errors.** Do not use `_` to discard an error unless absolutely necessary for a documented reason.
+- Use `fmt.Errorf("context: %w", err)` to wrap errors and preserve the original type for `errors.Is` and `errors.As`.
+- Handle errors as early as possible to minimize nesting.
+- Log errors at service/actor boundaries (e.g. after RPC or layer boundary); return wrapped errors to callers.
+- **gRPC errors:** Use `google.golang.org/grpc/status` and `codes`; `status.FromError(err)` and `st.Code()` for retry decisions. Treat `codes.Unavailable`, `codes.DeadlineExceeded`, `codes.ResourceExhausted` as retriable when implementing clients.
+
+## 3. API Design
+- **"Accept interfaces, return structs"**: Functions should take the smallest interface possible (e.g., `io.Reader`) and return concrete types to the caller for flexibility.
+- **Interface-driven development**: Prefer composition over inheritance; use small, purpose-specific interfaces. Have public functions interact with interfaces, not concrete types, for testability.
+- Use **Constructor Functions** (e.g., `NewClient(...)`) to initialize structs and inject dependencies.
+- Propagate `context.Context` as the first argument in all functions involving network, DB, or long-running tasks.
+- **HTTP/REST APIs** (when building HTTP services): Use the standard library `net/http` and the **ServeMux** introduced in Go 1.22 for routing. Handle HTTP methods (GET, POST, PUT, DELETE) with appropriate handler signatures (`func(w http.ResponseWriter, r *http.Request)`). Use wildcard/regex route features where needed. Return appropriate status codes and format JSON responses correctly. Implement middleware for cross-cutting concerns (logging, auth). Consider rate limiting and authz on external-facing endpoints.
+- **API/feature workflow:** Follow requirements carefully. For new APIs or features, think step-by-step: describe plan (structure, endpoints, data flow) in pseudocode or outline; confirm the plan, then write code. Leave no todos or placeholders in the implementation. Be concise; add brief comments for complex or idiomatic logic. If unsure about a best practice, say so instead of guessing. Suggest how to test endpoints (e.g. `go test`, table-driven cases).
+
+## 4. Concurrency & Performance
+- Use goroutines only when necessary. Ensure every goroutine has a clear lifecycle and termination plan. Implement **goroutine cancellation** via context propagation to avoid leaks and deadlocks.
+- Guard shared state with `sync.Mutex` or `sync.RWMutex` (use `RWMutex` when reads dominate); or use channels. Use `sync/atomic` for simple counters.
+- Use `defer` to clean up resources (files, DB connections, locks) immediately after successful initialization.
+- **Performance:** Use benchmarks to track regressions; minimize allocations; profile before tuning. Instrument hot paths (DB, external calls) where observability is needed.
+
+## 5. Testing
+- Create a `_test.go` file for every package.
+- Prioritize **Table-Driven Tests** for logic with multiple input/output scenarios; use parallel execution where safe.
+- **Mock external interfaces** (generated or handwritten mocks). Separate fast unit tests from integration/E2E tests.
+- Use the standard `testing` package; avoid "assert" libraries unless specifically requested. Use `go test -cover` for coverage.
+
+## 6. Architecture & Structure
+- **Clean Architecture:** Structure code into handlers/controllers, services/use cases, repositories/data access, and domain models. Keep logic decoupled from transport/framework code.
+- **Project layout:** Use `cmd/` for entrypoints, `internal/` (or `internal/app/`) for core logic, `pkg/` for shared packages, and `configs/` for configuration (workspace uses `configs/main/`). Group by feature when it improves clarity.
+- **Domain-driven design:** Apply where applicable; favor clear boundaries and dependency inversion.
+
+## 7. Security & Resilience
+- **Input validation:** Validate and sanitize inputs rigorously, especially from external sources.
+- **External calls:** Use retries, exponential backoff, and timeouts on all external calls. Consider circuit breakers and rate limiting for service protection.
+- Use secure defaults for auth (JWT, cookies) and config. Isolate sensitive operations with clear permission boundaries.
+
+## 8. Observability (OpenTelemetry)
+- Use **OpenTelemetry** for distributed tracing and metrics when the project uses it. Propagate **spans** across service boundaries (HTTP, gRPC, DB, external APIs). Attach `context.Context` to spans and logs.
+- Inject **trace IDs** (or request IDs) into structured logs (zerolog) for correlation. Avoid excessive cardinality in labels and traces.
+- Monitor key metrics (latency, throughput, error rate). Use Prometheus/Grafana and alerting where the workspace deploys them.
+
+## 9. Documentation & Tooling
+- Document public functions and packages with **GoDoc-style** comments. Provide concise READMEs for services/libraries. Consider `CONTRIBUTING.md` and `ARCHITECTURE.md` to guide team practices.
+- Enforce formatting and linting: `go fmt`, `goimports`, and `golangci-lint` where adopted. Use Go modules; version-lock dependencies; run lint, test, and security checks in CI.
+- **Key conventions:** (1) Prioritize readability, simplicity, and maintainability. (2) Design for change: isolate business logic, minimize framework lock-in. (3) Emphasize clear boundaries and dependency inversion. (4) Ensure behavior is observable, testable, and documented. (5) Automate testing, building, and deployment.
+
+## 10. Third-Party Library Introduction
+
+When adding or wrapping a new third-party dependency:
+
+1. **Verify thread-safety contracts.** Read the library's godoc and source to determine which methods are safe for concurrent use. Do not assume `Get`/`Read`/`Lookup` methods are side-effect-free (e.g. `groupcache/lru.Cache.Get` mutates internal state). When in doubt, use `sync.Mutex` over `sync.RWMutex`.
+2. **Prefer concurrency-safe alternatives.** If the library requires external locking, check whether a thread-safe variant exists (e.g. `hashicorp/golang-lru/v2` instead of `groupcache/lru`). Fewer locks = fewer bugs.
+3. **Pin the version.** Use `go get lib@vX.Y.Z` with an explicit version. Review the dependency's license and maintenance status before adopting.
+
+**Required tests when wrapping a third-party library** (add to wrapper's `*_test.go`):
+
+| Test | Naming convention | When required | What it catches |
+|------|-------------------|---------------|-----------------|
+| Concurrent access | `Test*_ConcurrentAccess` | Always (if used from multiple goroutines) | Data races, deadlocks, panics under load |
+| Behavioral contract | `Test*_BehavioralContract` | Always | Library not behaving as expected (e.g. eviction policy, return values) |
+| Nil/zero-value safety | `Test*_NilSafety` | Always | Panics on nil/zero inputs the wrapper may pass |
+| Upgrade canary | `Test*_UpgradeCanary` | When depending on specific or undocumented behavior | Silent behavior changes after `go get -u` |
+| Resource cleanup | `Test*_ResourceCleanup` | When lib holds connections, goroutines, or file handles | Leaked goroutines, unclosed connections, file handle exhaustion |
+
+After writing the tests, run `go test -race ./...` to validate. Every PR that introduces or wraps a new library must pass this.
+
+## 11. Prohibited Patterns
+- NO `panic()` in production code unless for unrecoverable startup errors.
+- NO "TODO" or placeholder logic; if a feature is incomplete, clearly state why in the chat.
+- Avoid global mutable state; prefer dependency injection and constructor-injected dependencies.
+
+## 12. Logging Standards (zerolog)
+
+Use **zerolog** (`github.com/rs/zerolog`) for all logging. Prefer the shared logging package when available (e.g. `orbw-git.../shared/logging` or repo’s `internal/logging`).
+
+- **Logger instance**: Store `*zerolog.Logger` on structs and inject it via constructors (e.g. `NewServer(logger *zerolog.Logger)`). Do not use package-level loggers for component logic except where the repo already uses a shared root (e.g. actors using `logging.Root`).
+- **Named loggers**: Use named loggers per component so logs can be filtered by "PN" (process/component name):
+  - `logging.NewNamedLogger("component-name")` for services/components.
+  - `logging.NewProcessLogger(name, pid)` for actors/processes that have a PID.
+  - `logging.NewChildNamedLogger(name, parentLogger)` for sub-components.
+- **Structured pattern**: Use the chain API; add fields then call `Msg` or `Msgf`:
+  - `logger.Info().Str("key", value).Msg("message")`
+  - `logger.Info().Str("a", a).Str("b", b).Msgf("format %s", arg)`
+  - For errors: `logger.Err(err).Msg("message")` or `logger.Error().Err(err).Str("key", val).Msg("message")`
+- **Levels**: Use `Trace()`, `Debug()`, `Info()`, `Warn()`, `Error()`, `Fatal()` as appropriate. Level is typically configured via `LOG_LEVEL` (trace, debug, info, warn, error).
+- **No sensitive data**: Never log passwords, secrets, or PII.
+- **Avoid**: `log/slog`, legacy `log` package, and `fmt.Printf` for application logging.
+
+## Reference (workspace)
+
+- For project layout, config paths, gRPC reconnect pattern, proto, and Kustomize, follow workspace-wide rules when available.
+- Additional Go guidance aligned with [cursor.directory/rules/go](https://cursor.directory/rules/go) and [cursor.directory/rules/golang](https://cursor.directory/rules/golang) (APIs, Clean Architecture, observability, security, tooling). Workspace keeps zerolog and gRPC conventions above.

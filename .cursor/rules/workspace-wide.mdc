@@ -1,0 +1,55 @@
+---
+description: Workspace-wide project context, Go conventions, gRPC reconnect, proto/config, Kustomize
+alwaysApply: true
+---
+
+# Workspace-wide config and settings
+
+Apply when working in agentic-workspace or when you need shared conventions across Go/communicator repos.
+
+## Project context
+
+- **Module:** Use the repo's Go module name (e.g. `nokia/nsp/comm-worker-gnmi-go`). Go 1.24+, common deps: Hollywood actor system, RabbitMQ, etcd, gRPC, zerolog, OpenTelemetry.
+- **Layout:** Prefer `internal/app/` for app logic, `cmd/` for entrypoints, `protobuf/` or `protomsg/` for protos, `configs/main/` for runtime config, `kustomize/` for deployment.
+- **Config:** Property files under `configs/main/`. Secrets under `secrets/`. Deployment config in `kustomize/base/configmap.yaml`.
+- **Logging:** Prefer shared logging (e.g. zerolog via `orbw-git.ca.alcatel-lucent.com/.../shared/logging`). Use named loggers per component.
+
+## Go conventions
+
+- **Imports:** Group stdlib, then third-party, then repo module and shared libs. Use `goimports`/gofmt.
+- **Errors:** Wrap with `fmt.Errorf("context: %w", err)`; return to callers; log at service/actor boundary.
+- **Logging:** Structured fields: `logger.Info().Str("key", val).Err(err).Msg("message")`. Named loggers per component.
+- **Context:** First argument for functions that do I/O or RPC; use `context.WithTimeout` for timeouts; respect cancellation.
+- **Concurrency:** Protect shared state with `sync.Mutex`/`sync.RWMutex`; avoid global mutable state where possible.
+- **gRPC errors:** Use `google.golang.org/grpc/status` and `codes`; `status.FromError(err)` and `st.Code()` for retry decisions.
+- **Tests:** Prefer table-driven tests; `*_test.go` next to source; mock external clients where appropriate.
+
+## gRPC client reconnect pattern
+
+For long-lived gRPC clients (e.g. device-registry, Schema Server):
+
+- **Dial:** Use `grpc.DialContext(ctx, target, opts...)` with `grpc.WithBlock()` so the connection is established at dial time, not on first RPC.
+- **Options:** `grpc.WithTransportCredentials(insecure.NewCredentials())`, and `grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(...), grpc.MaxCallSendMsgSize(...))` when needed.
+- **Reconnect:** On RPC failure, treat `codes.Unavailable`, `codes.DeadlineExceeded`, `codes.ResourceExhausted` as retriable. Implement `invalidate()` (close conn, set client/conn to nil), then retry the RPC once after a fresh `getOrConnect(ctx)`.
+- **getOrConnect:** If conn is nil, dial with a timeout context; store `*grpc.ClientConn` and generated client; protect with a mutex so only one goroutine dials.
+- **Startup:** Call `getOrConnect(ctx)` once in constructor or `Start()` so the first request uses an existing connection.
+- **Close:** In `Close()`/`Stop()`, close the connection and set conn/client to nil so the next use can reconnect.
+
+## Proto and config
+
+**Proto:** Set `option go_package` to the repo's module and output path (e.g. `internal/go/protomsg/<package>`). Generate with `make proto` or equivalent; output under `internal/go/protomsg/` or repo convention. Use consistent import paths for shared protos (`protobuf/` or `protomsg/` layout).
+
+**Config:** Runtime property files under `configs/main/`, read via shared config helpers. JSON options: e.g. `*.server.options.json`; unmarshal into structs with json tags. Secrets under `secrets/`; not committed. New deployment keys: add to `kustomize/base/configmap.yaml` and to the app's configuration struct/reads.
+
+## Kubernetes and Kustomize
+
+- **Base:** `kustomize/base/` – configmap, service; `kustomization.yaml` lists resources.
+- **Workload:** StatefulSet or Deployment as appropriate; container ports for http, grpc, prometheus; probes: `/livez`, `/readyz`, `/startupz` on http port.
+- **ConfigMap:** Keys in `kustomize/base/configmap.yaml`; mount at app's config path (e.g. `/app/configs/main`).
+- **Observability:** Prometheus annotations; optional `sidecar.opentelemetry.io/inject`; `OTEL_SERVICE_NAME` env.
+- **Overlays:** Use `kustomize/overlays/` for env-specific variants (e.g. development, local).
+
+## Reference
+
+- Project-specific Cursor rules (when present): each repo's `.cursor/rules/*.mdc` (e.g. comm-worker-gnmi-go: project-overview, go-conventions, grpc-client-reconnect, proto-and-config, kustomize-deployment).
+- This agent holds the single workspace-wide context; individual repos do not duplicate it.
