@@ -1,2 +1,8 @@
 # Local Confluence credentials; never commit
 confluence_env.local
+
+# NSP OpenSearch / gateway credentials; never commit
+opensearch_env.local
+
+# K8s test-client credentials; never commit
+k8s_test_env.local

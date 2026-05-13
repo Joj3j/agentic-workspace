@@ -64,6 +64,12 @@ You are an expert in Rust, async programming, and concurrent systems. Always adh
 
 ## 7. Code Organization
 
+- **Understand before designing:** Before proposing a design, study the existing codebase to identify the patterns and conventions already in use (e.g. actor model, message passing, async channels). Plan new features and refactors to follow those established patterns rather than introducing conflicting paradigms.
+- **Actor model (comm-worker-netconf-rs):** The NETCONF worker uses the **ractor** actor framework. Actors implement the `Actor` trait and process messages via `handle`. All mutable state lives inside the actor -- no external lock is needed on actor-owned state. Follow these rules:
+  - **Never block an actor's message handler** with synchronous network calls, long-running RPCs, or heavy computation. If an operation may block, delegate it to a **child actor** (via `Actor::spawn_linked`) or a `tokio::spawn` task and return immediately. The child/task sends a result message back to the parent via `cast!` or `ActorRef::send_message`.
+  - **Two-phase message pattern:** Phase 1 receives the request and checks fast paths (caches); on miss, it sends a message to a child actor and returns. Phase 2 receives the child's response message and completes the original request. This keeps the parent's mailbox free.
+  - **Coalesce duplicate in-flight requests:** When multiple callers request the same async operation, track in-flight keys and park subsequent requests. When the first completes, drain the parked requests from cache or re-dispatch.
+  - **No lock on actor state:** Actor state is only accessed within `handle` -- the actor mailbox serializes access. Use `Arc<Mutex<_>>` or `Arc<RwLock<_>>` only for state shared **outside** the actor (e.g. cache objects returned to multiple concurrent callers).
 - Split code into smaller, focused modules.
 - Reduce coupling between components.
 - Extract common patterns into traits.

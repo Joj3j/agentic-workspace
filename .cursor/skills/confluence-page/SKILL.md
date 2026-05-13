@@ -12,7 +12,7 @@ Use this skill when the user asks to **read** or **write** a Confluence page. Th
 Before running either script, the Confluence env vars must be set **in the same terminal**:
 
 ```bash
-cd <agentic-workspace>/.cursor/scripts && source confluence_env.sh
+cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh
 ```
 
 This sources `confluence_env.local` (gitignored) which must export:
@@ -25,14 +25,16 @@ This sources `confluence_env.local` (gitignored) which must export:
 
 If `confluence_env.local` does not exist, tell the user:
 
-> Copy `confluence_env.local.example` → `confluence_env.local`, set your values, then `source confluence_env.sh`.
+> Copy `confluence_env.local.example` → `confluence_env.local` (both in `.cursor/scripts/confluence/`), set your values, then `source confluence_env.sh`.
 
 ## Scripts
 
 | Script | Location |
 |--------|----------|
-| Read | `agentic-workspace/.cursor/scripts/confluence_read_page.py` |
-| Create | `agentic-workspace/.cursor/scripts/confluence_create_page.py` |
+| Read | `workspace-settings/.cursor/scripts/confluence/confluence_read_page.py` |
+| Create | `workspace-settings/.cursor/scripts/confluence/confluence_create_page.py` |
+| Env loader | `workspace-settings/.cursor/scripts/confluence/confluence_env.sh` |
+| Secrets template | `workspace-settings/.cursor/scripts/confluence/confluence_env.local.example` → copy to `confluence_env.local` (gitignored) |
 
 ---
 
@@ -62,7 +64,7 @@ When **generating** a Confluence body (e.g. from an arch doc skill or user reque
 2. Place draw.io diagrams in `<repo>/docs/confluence/diagrams/`.
 3. Reference diagrams from the HTML body with relative links and Confluence upload instructions.
 
-**Do not** store generated HTML or diagrams in `agentic-workspace/docs/`.
+**Do not** store generated HTML or diagrams in `workspace-settings/docs/`.
 
 ---
 
@@ -93,7 +95,7 @@ python3 confluence_read_page.py --page-id 123456789
 
 ### Agent steps (read)
 
-1. Source env: `cd <agentic-workspace>/.cursor/scripts && source confluence_env.sh`
+1. Source env: `cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh`
 2. Run the read script with the appropriate flags.
 3. Use stdout as the page content. If exit code is non-zero or stderr has errors, report the error.
 
@@ -143,7 +145,7 @@ python3 confluence_create_page.py \
 
 ### Agent steps (write)
 
-1. Source env: `cd <agentic-workspace>/.cursor/scripts && source confluence_env.sh`
+1. Source env: `cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh`
 2. Determine the **parent page**:
    - If the user gave a parent page title or ID → use it.
    - If the context implies a known parent (e.g. arch pages use parent ID `2069174542`) → use it.

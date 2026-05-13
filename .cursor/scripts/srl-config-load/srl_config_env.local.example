@@ -1,0 +1,12 @@
+# Copy this file to srl_config_env.local and edit.
+# srl_config_env.local is gitignored (contains credentials).
+
+# SSH/SCP credentials for the target SRL NE
+SRL_USER="admin"
+SRL_PASSWORD="admin"
+
+# SRL version the flat config was exported from (source device)
+SRL_SOURCE_VER="25.10"
+
+# SRL version running on the target device
+SRL_TARGET_VER="25.10"

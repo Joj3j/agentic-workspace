@@ -1,0 +1,16 @@
+# K8s test-client environment — copy to k8s_test_env.local and edit.
+# Never commit k8s_test_env.local.
+
+# Jump host with kubectl access (not necessarily a K8s node)
+K8S_NODE_IP="100.127.201.224"
+
+# SSH access to the jump host
+K8S_SSH_USER="root"
+K8S_SSH_KEY=""              # e.g. ~/.ssh/id_rsa; leave empty for default
+K8S_SSH_OPTS=""             # extra ssh options, e.g. "-o StrictHostKeyChecking=no"
+
+# Port-forward ports on the jump host (client connects to jump:port)
+# Use ports not already in use on the jump host (avoid 50055/50058)
+CLS_FWD_PORT="40055"        # comm-layer-server gRPC
+DR_FWD_PORT="40058"         # device-registry gRPC
+GNMI_FWD_PORT="40051"       # comm-worker-gnmi gRPC

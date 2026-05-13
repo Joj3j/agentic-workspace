@@ -32,16 +32,35 @@ The section order and content expectations come from **arch-docs**:
 | 12 | `12-sign-off.md` | Sign-Off | — |
 
 - **Template source:** `arch-docs/docs/HLD/` (NN-*.md). Each file has C1/C2 phase guidance in blockquotes; use that to decide what to write.
-- **Documentation guidelines:** Follow `arch-docs/docs/documentation-guidelines.md` (Backstage techdocs, mkdocs, Mermaid for diagrams, catalog-info.yaml link to Confluence arch page).
 - **Confluence template (same structure):** https://confluence.ext.net.nokia.com/pages/viewpage.action?pageId=2162422282  
 - **Sample filled page:** https://confluence.ext.net.nokia.com/display/NSPArchEvo/gNMI+Communicator+Service  
 - **Device Registry arch page:** https://confluence.ext.net.nokia.com/display/NSPArchEvo/Device+Registry+Arch  
 
 See [reference.md](reference.md) for chapter purposes, table templates, API patterns, draw.io generation, and diagram notes.
 
+### Documentation guidelines (arch-docs)
+
+Follow **`arch-docs/docs/documentation-guidelines.md`** in full. In practice:
+
+| Topic | Expectation |
+|-------|-------------|
+| **Backstage / TechDocs** | Repo docs published via TechDocs; structure aligns with mkdocs-style navigation where applicable. |
+| **mkdocs** | Use the layout and conventions described in documentation-guidelines (paths, nav). |
+| **`catalog-info.yaml`** | Register the component; in **`metadata.links`**, include the **Confluence architecture page** URL once the page exists so Backstage and the wiki stay linked. |
+| **Diagrams in repo** | Use **Mermaid** in markdown under `docs/` (e.g. `docs/HLD/`, `docs/actual/`). Confluence uses **draw.io** for upload; keep both consistent in meaning. |
+| **Living HLD** | Update HLD and Confluence summary when features or integrations change; do not leave arch docs stale relative to production behavior. |
+
+### Confluence body and HLD section coverage
+
+The **Confluence** `body.html` (and any single-page arch wiki view) must **cover the same section areas** as the HLD template (`arch-docs/docs/HLD/index.md` chapters 1–12): Architecture Overview, Components, FOSS/3PP, System Dependencies, APIs, Models, Data Flow, Security and Access Control, Platform Considerations, Resource Usage, Patents, Sign-Off. Use the **same order** as the Confluence template (pageId 2162422282) where possible.
+
+- For each area: at least a short paragraph, bullets, or a table — or an explicit **N/A** / **TODO** with owner.
+- Do not omit whole chapters from the wiki body because the detailed write-up lives only in repo markdown; the wiki is what many reviewers read first.
+- **Reviews:** The [confluence-cloudnative-review](../confluence-cloudnative-review/SKILL.md) skill checks cloud-native concerns **and** whether these template sections appear on the fetched Confluence page (gaps → findings or open questions).
+
 ## Output layout (per repo)
 
-All arch doc outputs live under the **target repo's own `docs/` directory** — not in agentic-workspace. Standard layout:
+All arch doc outputs live under the **target repo's own `docs/` directory** — not in workspace-settings. Standard layout:
 
 ```
 <repo>/docs/
@@ -191,7 +210,7 @@ For services with persistence (etcd, DB), add a projection table:
 
 ## Draw.io diagram generation
 
-Generate draw.io diagrams **directly** as `.drawio` XML files — do not require Mermaid as an intermediate step. Follow `agentic-workspace/.cursor/rules/drawio-rules.mdc` for all styling. Store diagrams under `<repo>/docs/confluence/diagrams/`.
+Generate draw.io diagrams **directly** as `.drawio` XML files — do not require Mermaid as an intermediate step. Follow `workspace-settings/.cursor/rules/drawio-rules.mdc` for all styling. Store diagrams under `<repo>/docs/confluence/diagrams/`.
 
 ### Component diagram (direct draw.io)
 
@@ -242,7 +261,7 @@ In local HDD (markdown):
 ## Confluence publish
 
 - **Prerequisites:** In the same terminal used for scripts, run:  
-  `cd <agentic-workspace>/.cursor/scripts && source confluence_env.sh`  
+  `cd <workspace-settings>/.cursor/scripts && source confluence_env.sh`  
   (Requires `confluence_env.local` with `CONFLUENCE_BASE_URL`, `CONFLUENCE_USERNAME`, `CONFLUENCE_API_TOKEN`.)
 
 - **Read template/sample (optional):**  
@@ -290,8 +309,8 @@ Each repo owns its arch docs under its own `docs/` directory:
 | HLD chapter templates | `arch-docs/docs/HLD/` (index + 01–12) | Section order, C1/C2 guidance |
 | Component-architect agent | `arch-docs/.cursor/agents/component-architect.md` | PRD → HLD workflow |
 | Documentation guidelines | `arch-docs/docs/documentation-guidelines.md` | Backstage techdocs, mkdocs, Mermaid, catalog-info |
-| Draw.io rules | `agentic-workspace/.cursor/rules/drawio-rules.mdc` | Naming, colors, layout, sequence diagrams, versioning |
-| Confluence scripts | `agentic-workspace/.cursor/scripts/` | `confluence_env.sh`, `confluence_read_page.py`, `confluence_create_page.py` |
+| Draw.io rules | `workspace-settings/.cursor/rules/drawio-rules.mdc` | Naming, colors, layout, sequence diagrams, versioning |
+| Confluence scripts | `workspace-settings/.cursor/scripts/` | `confluence_env.sh`, `confluence_read_page.py`, `confluence_create_page.py` |
 | Confluence template | pageId **2162422282** | Structure reference (do not create under) |
 | Parent for new pages | pageId **2069174542** | `--parent-id` for `confluence_create_page.py` |
 | Device Registry arch | [Confluence](https://confluence.ext.net.nokia.com/display/NSPArchEvo/Device+Registry+Arch), `device-registry/docs/confluence/body.html` | Gold-standard reference |

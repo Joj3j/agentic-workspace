@@ -386,7 +386,17 @@ sequenceDiagram
 ## Documentation guidelines (arch-docs)
 
 - **Location:** `arch-docs/docs/documentation-guidelines.md`
-- **Relevant points:** Backstage techdocs, mkdocs, `catalog-info.yaml` (include Confluence architecture page link in `metadata.links`). **Diagrams:** use **Mermaid** in repo docs. HLD must be kept up to date when adding features.
+- **Backstage / TechDocs:** Publish repo docs per that file; follow mkdocs-oriented structure where specified.
+- **mkdocs:** Use paths and navigation conventions from documentation-guidelines.
+- **`catalog-info.yaml`:** Register the component; add the **Confluence architecture page** URL under **`metadata.links`** so the wiki and catalog stay aligned.
+- **Diagrams:** **Mermaid** in repo markdown (`docs/HLD/`, `docs/actual/`); **draw.io** for Confluence (`docs/confluence/diagrams/`) — same semantics, different format.
+- **Living HLD:** Refresh HLD chapters and the Confluence body when behavior, APIs, or dependencies change.
+
+### Confluence page vs HLD template sections
+
+NSP arch Confluence pages should mirror **`arch-docs/docs/HLD/index.md`** (chapters 1–12): Architecture Overview → Sign-Off. When drafting `body.html`, verify every chapter has content or explicit N/A/TODO — not only the cloud-native-heavy sections.
+
+For **reviewing** an existing Confluence arch page against that template, use the **confluence-cloudnative-review** skill (`workspace-settings/.cursor/skills/confluence-cloudnative-review/SKILL.md`), which includes an **HLD template coverage** pass in addition to cloud-native findings.
 
 ---
 
@@ -402,7 +412,7 @@ sequenceDiagram
 | Device Registry HDD (local) | `device-registry/docs/actual/System_Design_HighLevel.md` |
 | Device Registry body (Confluence) | `device-registry/docs/confluence/body.html` |
 | Device Registry data flow draw.io | `device-registry/docs/confluence/diagrams/device_registry_data_flow_v1.drawio` |
-| Draw.io rules | `agentic-workspace/.cursor/rules/drawio-rules.mdc` |
-| Confluence scripts | `agentic-workspace/.cursor/scripts/` |
+| Draw.io rules | `workspace-settings/.cursor/rules/drawio-rules.mdc` |
+| Confluence scripts | `workspace-settings/.cursor/scripts/` |
 | Read template via script | `confluence_read_page.py --page-id 2162422282` |
 | Read Device Registry page | `confluence_read_page.py --title "Device Registry Arch" --space-key NSPArchEvo` |

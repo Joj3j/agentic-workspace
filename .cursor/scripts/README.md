@@ -1,73 +1,70 @@
 # Scripts (under .cursor)
 
-Scripts used with the workspace: Confluence, etc. Skills live in `.cursor/skills/`.
+Scripts used with the workspace: SRL config load, Confluence, NSP OpenSearch log reports, etc.
+Skills live in `.cursor/skills/`.
 
-## Confluence: set env (run first)
+## SRL: load flat config onto an NE
 
-Invoke this **first** so Confluence read/create scripts have credentials. **Source** it in your shell (same shell you use for the Python scripts):
+See [`srl-config-load/README.md`](srl-config-load/README.md).
+
+Scripts: `srl-config-load/` — `srl_load_config.py`, `srl_config_env.sh`.
+Templates: `tools/srl-configs/` — fixed configs + `.meta.json` sidecars.
+Skill: `.cursor/skills/srl-config-load/SKILL.md`.
+
+## K8s test clients
+
+See [`k8s-test-client/`](k8s-test-client/) for scripts. Skill: `.cursor/skills/k8s-test-client/SKILL.md`.
 
 ```bash
-cd agentic-workspace/.cursor/scripts
+cd workspace-settings/.cursor/scripts/k8s-test-client
+cp k8s_test_env.local.example k8s_test_env.local   # first time only
+# Edit k8s_test_env.local: jump host IP, SSH user/key
+source k8s_test_env.sh
+
+bash k8s_run_test_client.sh --status --client comm-layer-server
+bash k8s_run_test_client.sh --client comm-layer-server
+bash k8s_run_test_client.sh --client device-registry
+bash k8s_run_test_client.sh --client comm-worker-gnmi
+```
+
+## NSP OpenSearch: error log reports
+
+See [`nsp-opensearch/`](nsp-opensearch/) for scripts. Skill: `.cursor/skills/nsp-opensearch/SKILL.md`.
+
+```bash
+cd workspace-settings/.cursor/scripts/nsp-opensearch
+cp opensearch_env.local.example opensearch_env.local   # first time only
+# Edit: NSP_GATEWAY, NSP_USER, NSP_PASSWORD (optional: NSP_OPENSEARCH_PORT, NSP_VERIFY_TLS=0)
+source opensearch_env.sh
+
+python3 nsp_opensearch_log_report.py --minutes 60 --output /tmp/nsp-logs.md
+python3 nsp_opensearch_log_report.py --query both --samples 5 --auto-widen -o /tmp/nsp-logs.md
+python3 nsp_opensearch_log_report.py --index 'nsp-example-logs-2026.04.10' --json-out
+```
+
+## Confluence: read / create pages
+
+See [`confluence/`](confluence/) for scripts. Skill: `.cursor/skills/confluence-page/SKILL.md`.
+
+```bash
+cd workspace-settings/.cursor/scripts/confluence
+cp confluence_env.local.example confluence_env.local   # first time only
+# Edit confluence_env.local: CONFLUENCE_BASE_URL, CONFLUENCE_USERNAME, CONFLUENCE_API_TOKEN
 source confluence_env.sh
-```
 
-First-time setup: copy the example file and set your values (the local file is gitignored):
-
-```bash
-cp confluence_env.local.example confluence_env.local
-# Edit confluence_env.local: set CONFLUENCE_BASE_URL, CONFLUENCE_USERNAME, CONFLUENCE_API_TOKEN
-```
-
-Then in the **same** shell you can run `confluence_read_page.py` or `confluence_create_page.py` without exporting vars each time.
-
-## Confluence: read page (no MCP)
-
-**Agent command:** Use the Cursor command **Confluence: read page** (`.cursor/commands/confluence-read.md`) so the agent knows how to run this script.
-
-Read a page by title + space or by page ID. Set env first with `source confluence_env.sh` (see above), or export the Confluence vars manually.
-
-```bash
-# By title and space (default space NSPArchEvo)
+# Read by title
 python3 confluence_read_page.py --title "MDC Wrapper Server" --space-key NSPArchEvo
 
-# By page ID
+# Read by page ID
 python3 confluence_read_page.py --page-id 123456789
 
-# Output: --format text (default), --format html, or --format json
-python3 confluence_read_page.py --title "Some Page" --space-key NSPArchEvo --format html
-```
-
-## Confluence: create page (no MCP)
-
-When the Nokia NSP Confluence MCP is **blocked by admin**, use the Confluence REST API script to create pages from the terminal or from an agent (agent runs the script with your env vars).
-
-**Setup (once):** Run `source confluence_env.sh` first (see “Confluence: set env” above), or export the three Confluence vars manually.
-
-**Create a new arch page under [MDC Wrapper Server](https://confluence.ext.net.nokia.com/display/NSPArchEvo/MDC+Wrapper+Server):**
-
-```bash
-cd agentic-workspace/.cursor/scripts
+# Create under a parent title
 python3 confluence_create_page.py \
-  --parent-title "MDC Wrapper Server" \
-  --space-key NSPArchEvo \
-  --title "Your New Page Title" \
-  --body "<p>Intro paragraph.</p><h2>Section</h2><p>More content.</p>"
-```
+  --parent-title "MDC Wrapper Server" --space-key NSPArchEvo \
+  --title "Your New Page Title" --body "<p>Content.</p>"
 
-**Use a file for the body (e.g. Markdown/HTML):**
-
-```bash
+# Create from an HTML body file
 python3 confluence_create_page.py \
-  --parent-title "MDC Wrapper Server" \
-  --space-key NSPArchEvo \
-  --title "Your New Page Title" \
-  --body-file ./my_page.html
-```
-
-Confluence expects **HTML** in `--body` / `--body-file`. For Markdown, convert to HTML first (e.g. `pandoc -f markdown -t html`) or paste HTML.
-
-**If you already have the parent page ID** (from the page URL or API):
-
-```bash
-python3 confluence_create_page.py --parent-id 123456789 --title "Your New Page Title" --body "<p>Content.</p>"
+  --parent-id 2069174542 --title "Device Registry Arch" \
+  --body-file <repo>/docs/confluence/body.html
 ```
