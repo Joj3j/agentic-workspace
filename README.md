@@ -1,6 +1,8 @@
 # Agentic workspace
 
-Shared Cursor AI configuration for all repos in the Go workspace. Add this repo as the **first folder** in your `.code-workspace` so its rules, skills, and commands are always in scope. Cloned from workspace-settings.
+Shared Cursor AI configuration for all repos in the Go workspace. Add this repo as the **first folder** in your `.code-workspace` so its rules, skills, and commands are always in scope.
+
+Synced from `workspace-settings`; use either folder as the config source — keep them in sync when rules or skills change.
 
 ## Getting started
 
@@ -23,48 +25,27 @@ git clone git@github.com:Joj3j/agentic-workspace.git
 | `go-code-rules.mdc` | Go | `**/*.go` |
 | `rust-code-rules.mdc` | Rust | `**/*.rs`, `**/Cargo.toml` |
 | `java-code-rules.mdc` | Java | `**/*.java`, `**/pom.xml`, `**/build.gradle` |
-| `drawio-rules.mdc` | Diagrams | `**/*.drawio`, `**/docs/**/diagrams/**` |
+| `python-code-rules.mdc` | Python | `**/*.py`, `**/pyproject.toml`, `**/requirements*.txt` |
+
+Draw.io diagram guidance lives in the **drawio-diagrams** skill (not a rule).
 
 ### Commands
 
 | Command | How to invoke | What it does |
 |---------|--------------|--------------|
 | **MR** | `@agentic-workspace/.cursor/commands/mr.md` | Branch from master, commit, push, open MR |
-| **Confluence read** | `@agentic-workspace/.cursor/commands/confluence-read.md` | Read a Confluence page by title/URL/ID |
 
 ### Skills
 
-| Skill | What it does |
-|-------|-------------|
-| **confluence-page** | Read or create Confluence pages via REST API scripts. Handles env setup, URL parsing, parent page lookup. |
-| **create-repo-arch-doc** | Generate an HLD architecture document (markdown + Confluence HTML + draw.io diagrams) for any repo. Outputs go under the target repo's `docs/` directory. |
-| **maintain-workspace-rules** | Guide for adding or updating rules in this repo — placement decisions, frontmatter format, checklist. |
+See **AGENTS.md** for the full skills table (Confluence, k8s test clients, smoke tests, MR review, build pipelines, MDM tools, perf-rca, etc.).
 
-### Confluence scripts (first-time setup)
+### Script setup (first time)
 
-```bash
-cd agentic-workspace/.cursor/scripts
-cp confluence_env.local.example confluence_env.local
-# Edit confluence_env.local: set CONFLUENCE_BASE_URL, CONFLUENCE_USERNAME, CONFLUENCE_API_TOKEN
-source confluence_env.sh
-```
-
-Then in the same shell, run `confluence_read_page.py` or `confluence_create_page.py`. See `.cursor/scripts/README.md` for full usage.
+Each script directory has an `*_env.local.example` → copy to `*_env.local` (gitignored), then `source *_env.sh`. See `.cursor/scripts/README.md`.
 
 ## Arch doc convention
 
-Architecture documents live under each **target repo's own `docs/`** — not here. Standard layout:
-
-```
-<repo>/docs/
-  confluence/
-    body.html                    # Confluence page body (HTML)
-    diagrams/                    # draw.io files for Confluence upload
-  actual/
-    System_Design_HighLevel.md   # Detailed local HDD (markdown)
-```
-
-Use the **create-repo-arch-doc** skill to generate these. See `docs/README.md` for repos that already have arch docs.
+Architecture documents live under each **target repo's own `docs/`** — not here. Use the **create-repo-arch-doc** skill. See `docs/README.md` for repos that already have arch docs.
 
 ## Repo-specific rules
 

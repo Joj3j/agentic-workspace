@@ -1,0 +1,2 @@
+# Local secrets / customer endpoints — do not commit
+mdm-log-analyzer.env

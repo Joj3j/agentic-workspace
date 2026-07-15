@@ -20,9 +20,11 @@ usage() {
 Usage: $0 --client <name> [options] [-- extra-flags...]
 
 Clients:
-  comm-layer-server    rpc_test_client      (gRPC -> jump:${CLS_FWD_PORT:-40055})
-  device-registry      test_client          (gRPC -> jump:${DR_FWD_PORT:-40058})
-  comm-worker-gnmi     worker_test_client   (gRPC -> jump:${GNMI_FWD_PORT:-40051})
+  comm-layer-server       rpc_test_client         (gRPC -> jump:${CLS_FWD_PORT:-40055})
+  comm-layer-benchmark    benchmark_client        (gRPC -> jump:${CLS_FWD_PORT:-40055}, async bulk write smoke/load)
+  device-registry         test_client             (gRPC -> jump:${DR_FWD_PORT:-40058})
+  comm-worker-gnmi        worker_test_client      (gRPC -> jump:${GNMI_FWD_PORT:-40051})
+  comm-subscription-server subscription_test_client (gRPC -> jump:${SUB_FWD_PORT:-40056})
 
 Commands:
   --status            Check service and pod status on the cluster via SSH.
@@ -37,9 +39,10 @@ Environment (source k8s_test_env.sh first):
   K8S_SSH_USER          SSH user          (default: root)
   K8S_SSH_KEY           SSH key path      (optional)
   K8S_SSH_OPTS          Extra ssh options  (optional)
-  CLS_FWD_PORT          Forward port for comm-layer-server  (default 40055)
-  DR_FWD_PORT           Forward port for device-registry    (default 40058)
-  GNMI_FWD_PORT         Forward port for comm-worker-gnmi   (default 40051)
+  CLS_FWD_PORT          Forward port for comm-layer-server       (default 40055)
+  DR_FWD_PORT           Forward port for device-registry         (default 40058)
+  GNMI_FWD_PORT         Forward port for comm-worker-gnmi        (default 40051)
+  SUB_FWD_PORT          Forward port for comm-subscription-server (default 40056)
 EOF
   exit 1
 }
@@ -55,7 +58,9 @@ ssh_cmd() {
     # shellcheck disable=SC2206
     ssh_args+=($K8S_SSH_OPTS)
   fi
-  ssh "${ssh_args[@]}" "${K8S_SSH_USER}@${K8S_NODE_IP}" "$@"
+  # Redirect stdin from /dev/null so SSH setup commands do not consume
+  # piped input intended for the test-client binary.
+  ssh "${ssh_args[@]}" "${K8S_SSH_USER}@${K8S_NODE_IP}" "$@" </dev/null
 }
 
 # --- Check status via SSH -------------------------------------------------
@@ -70,31 +75,45 @@ do_status() {
 
 # --- Remote port-forward -------------------------------------------------
 
+_resolve_pf_target() {
+  local target="${K8S_PF_TARGET:-svc/${K8S_SVC_NAME}}"
+  if [[ "$target" == "pod-selector" ]]; then
+    echo "Resolving pod for app=${K8S_SVC_NAME} in ${K8S_NAMESPACE} ..." >&2
+    target=$(ssh_cmd "kubectl get pods -n ${K8S_NAMESPACE} -l app=${K8S_SVC_NAME} \
+      --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}'" 2>/dev/null)
+    target="${target//\'/}"
+    if [[ -z "$target" ]]; then
+      echo "Error: no running pod found for app=${K8S_SVC_NAME}" >&2
+      exit 1
+    fi
+    target="pod/${target}"
+  fi
+  echo "$target"
+}
+
 start_port_forward() {
   # Kill any leftover port-forward from a previous run
   echo "Checking for existing port-forward on ${K8S_NODE_IP}:${FWD_PORT} ..."
   ssh_cmd "fuser -k ${FWD_PORT}/tcp 2>/dev/null; true" 2>/dev/null || true
   sleep 0.5
 
-  local pf_target="${K8S_PF_TARGET:-svc/${K8S_SVC_NAME}}"
+  PF_TARGET=$(_resolve_pf_target)
 
-  # For pod-based targets, resolve the first running pod now
-  if [[ "$pf_target" == "pod-selector" ]]; then
-    echo "Resolving pod for app=${K8S_SVC_NAME} in ${K8S_NAMESPACE} ..."
-    pf_target=$(ssh_cmd "kubectl get pods -n ${K8S_NAMESPACE} -l app=${K8S_SVC_NAME} \
-      --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}'" 2>/dev/null)
-    pf_target="${pf_target//\'/}"
-    if [[ -z "$pf_target" ]]; then
-      echo "Error: no running pod found for app=${K8S_SVC_NAME}" >&2
-      exit 1
-    fi
-    pf_target="pod/${pf_target}"
+  echo "Starting port-forward on ${K8S_NODE_IP}: :${FWD_PORT} -> ${PF_TARGET}:${K8S_SVC_PORT} ..."
+
+  # Build SSH args with keepalive so the tunnel survives long benchmark runs.
+  # NOTE: must NOT use $() command substitution here — that would orphan the ssh
+  # child process when the subshell exits, killing the port-forward immediately.
+  local _pf_ssh_args=(-o ConnectTimeout=5 -o BatchMode=yes
+                      -o ServerAliveInterval=15 -o ServerAliveCountMax=10)
+  if [[ -n "${K8S_SSH_KEY:-}" ]]; then _pf_ssh_args+=(-i "$K8S_SSH_KEY"); fi
+  if [[ -n "${K8S_SSH_OPTS:-}" ]]; then
+    # shellcheck disable=SC2206
+    _pf_ssh_args+=($K8S_SSH_OPTS)
   fi
-
-  echo "Starting port-forward on ${K8S_NODE_IP}: :${FWD_PORT} -> ${pf_target}:${K8S_SVC_PORT} ..."
-
-  ssh_cmd "kubectl port-forward -n ${K8S_NAMESPACE} ${pf_target} \
-    --address 0.0.0.0 ${FWD_PORT}:${K8S_SVC_PORT}" &
+  ssh "${_pf_ssh_args[@]}" "${K8S_SSH_USER}@${K8S_NODE_IP}" \
+    "kubectl port-forward -n ${K8S_NAMESPACE} ${PF_TARGET} \
+     --address 0.0.0.0 ${FWD_PORT}:${K8S_SVC_PORT}" </dev/null &
   PF_SSH_PID=$!
 
   local attempts=0
@@ -110,13 +129,60 @@ start_port_forward() {
       echo "Error: port-forward process exited unexpectedly" >&2
       echo "  Possible cause: port ${FWD_PORT} already in use on ${K8S_NODE_IP}" >&2
       echo "  Change *_FWD_PORT in k8s_test_env.local" >&2
+      stop_port_forward
       exit 1
     fi
   done
+  # Give kubectl port-forward a moment to complete the tunnel handshake.
+  sleep 3
   echo "Port-forward ready (${K8S_NODE_IP}:${FWD_PORT})"
+
+  # Watchdog: if the SSH process dies, restart it transparently.
+  _pf_watchdog &
+  PF_WATCHDOG_PID=$!
+}
+
+_pf_watchdog() {
+  while true; do
+    sleep 5
+    if ! kill -0 "$PF_SSH_PID" 2>/dev/null; then
+      echo "[port-forward watchdog] process died — restarting ..."
+      ssh_cmd "fuser -k ${FWD_PORT}/tcp 2>/dev/null; true" 2>/dev/null || true
+      sleep 1
+
+      local _pf_ssh_args=(-o ConnectTimeout=5 -o BatchMode=yes
+                          -o ServerAliveInterval=15 -o ServerAliveCountMax=10)
+      if [[ -n "${K8S_SSH_KEY:-}" ]]; then _pf_ssh_args+=(-i "$K8S_SSH_KEY"); fi
+      if [[ -n "${K8S_SSH_OPTS:-}" ]]; then
+        # shellcheck disable=SC2206
+        _pf_ssh_args+=($K8S_SSH_OPTS)
+      fi
+      ssh "${_pf_ssh_args[@]}" "${K8S_SSH_USER}@${K8S_NODE_IP}" \
+        "kubectl port-forward -n ${K8S_NAMESPACE} ${PF_TARGET} \
+         --address 0.0.0.0 ${FWD_PORT}:${K8S_SVC_PORT}" </dev/null &
+      PF_SSH_PID=$!
+
+      local w=0
+      while ! nc -z -w 1 "$K8S_NODE_IP" "$FWD_PORT" 2>/dev/null; do
+        sleep 0.5; w=$((w+1))
+        if [[ $w -ge 20 ]]; then
+          echo "[port-forward watchdog] restart failed — clients may see errors" >&2
+          break
+        fi
+      done
+      if nc -z -w 1 "$K8S_NODE_IP" "$FWD_PORT" 2>/dev/null; then
+        sleep 1
+        echo "[port-forward watchdog] restarted (pid=$PF_SSH_PID)"
+      fi
+    fi
+  done
 }
 
 stop_port_forward() {
+  # Stop the watchdog first so it does not restart what we are about to kill.
+  if [[ -n "${PF_WATCHDOG_PID:-}" ]] && kill -0 "$PF_WATCHDOG_PID" 2>/dev/null; then
+    kill "$PF_WATCHDOG_PID" 2>/dev/null || true
+  fi
   if [[ -n "${PF_SSH_PID:-}" ]] && kill -0 "$PF_SSH_PID" 2>/dev/null; then
     kill "$PF_SSH_PID" 2>/dev/null || true
     wait "$PF_SSH_PID" 2>/dev/null || true
@@ -171,6 +237,16 @@ case "$CLIENT" in
     K8S_NAMESPACE="nsp-communicator"
     K8S_SVC_NAME="comm-layer-server"
     ;;
+  comm-layer-benchmark)
+    REPO_DIR="${WORKSPACE_ROOT}/comm-layer-server"
+    MAKE_TARGET="benchmark_client"
+    BINARY="bin/benchmark_client"
+    ADDR_FLAG="-server"
+    FWD_PORT="${CLS_FWD_PORT}"
+    K8S_SVC_PORT="9001"
+    K8S_NAMESPACE="nsp-communicator"
+    K8S_SVC_NAME="comm-layer-server"
+    ;;
   device-registry)
     REPO_DIR="${WORKSPACE_ROOT}/device-registry"
     MAKE_TARGET="build-test-client"
@@ -192,9 +268,22 @@ case "$CLIENT" in
     K8S_SVC_NAME="comm-worker-gnmi"
     K8S_PF_TARGET="pod-selector"
     ;;
+  comm-subscription-server)
+    REPO_DIR="${WORKSPACE_ROOT}/comm-subscription-server"
+    MAKE_TARGET="subscription_test_client"
+    BINARY="bin/subscription_test_client"
+    ADDR_FLAG="-addr"
+    FWD_PORT="${SUB_FWD_PORT}"
+    K8S_SVC_PORT="50056"
+    K8S_NAMESPACE="nsp-communicator"
+    K8S_SVC_NAME="comm-subscription-server"
+    # K8s service resource is named comm-subscription-server-service in the kustomize base;
+    # override the port-forward target so kubectl resolves the correct Service object.
+    K8S_PF_TARGET="svc/comm-subscription-server-service"
+    ;;
   *)
     echo "Error: unknown client '$CLIENT'" >&2
-    echo "Supported: comm-layer-server, device-registry, comm-worker-gnmi" >&2
+    echo "Supported: comm-layer-server, comm-layer-benchmark, device-registry, comm-worker-gnmi, comm-subscription-server" >&2
     exit 1
     ;;
 esac
@@ -211,10 +300,32 @@ fi
 # Default: build + port-forward + connect
 cd "$REPO_DIR"
 
-if [[ "$FORCE_BUILD" == true ]] || [[ ! -x "$BINARY" ]]; then
+needs_go_rebuild() {
+  local bin="$1"
+  shift
+  [[ ! -x "$bin" ]] && return 0
+  local dir
+  for dir in "$@"; do
+    if find "$dir" -name '*.go' -newer "$bin" -print -quit 2>/dev/null | grep -q .; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+REBUILD=false
+if [[ "$FORCE_BUILD" == true ]] || needs_go_rebuild "$BINARY" ./cmd ./internal; then
+  REBUILD=true
+fi
+
+if [[ "$REBUILD" == true ]]; then
   echo "Building $CLIENT ($MAKE_TARGET) ..."
   make "$MAKE_TARGET"
 fi
+
+PF_SSH_PID=""
+PF_WATCHDOG_PID=""
+PF_TARGET=""
 
 trap stop_port_forward EXIT
 start_port_forward

@@ -1,0 +1,9 @@
+# Copy to confluence_env.local (gitignored) and set values. Then:
+#   cd .../agentic-workspace/.cursor/scripts/confluence && source ./confluence_env.sh
+
+export CONFLUENCE_BASE_URL="https://confluence.ext.net.nokia.com"
+export CONFLUENCE_USERNAME="your-atlassian-username"
+export CONFLUENCE_API_TOKEN="your-confluence-api-token"
+# Optional aliases (if CONFLUENCE_API_TOKEN is unset, confluence_env.sh copies one of these):
+# export CONFLUENCE_CURSOR_TOKEN="..."
+# export CONFLUENCE_PASSWORD="..."

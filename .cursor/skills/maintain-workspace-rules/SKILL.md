@@ -1,33 +1,35 @@
 ---
 name: maintain-workspace-rules
-description: Guides adding and updating Cursor rules in workspace-settings. Use when editing .cursor/rules, adding a new rule, deciding workspace-wide vs repo-specific rule placement, or when asked how workspace rules are organized.
+description: Guides adding and updating Cursor rules in agentic-workspace. Use when editing .cursor/rules, adding a new rule, deciding workspace-wide vs repo-specific rule placement, or when asked how workspace rules are organized.
 ---
 
 # Maintain workspace rules
 
-Use this skill when working in **workspace-settings** or when the user asks about workspace rules, adding rules, or where conventions live.
+Use this skill when working in **agentic-workspace** or when the user asks about workspace rules, adding rules, or where conventions live.
 
 ## Where rules live
 
 | Location | Purpose |
 |----------|---------|
-| **workspace-settings/.cursor/rules/** | Workspace-wide rules; apply when this folder is in scope (e.g. multi-root workspace). |
+| **agentic-workspace/.cursor/rules/** | Workspace-wide rules; apply when this folder is in scope (e.g. multi-root workspace). |
 | **Each repo’s .cursor/rules/** | Repo-specific rules (e.g. comm-worker-gnmi-go project-overview); do not duplicate workspace content here. |
 
 ## Rule files in this repo
 
 | File | Applies to | Notes |
 |------|------------|--------|
-| `workspace-wide.mdc` | All Go/communicator repos | Layout, config, gRPC reconnect, proto, Kustomize. No globs → always in context when workspace-settings is open. |
+| `workspace-wide.mdc` | All Go/communicator repos | Layout, config, gRPC reconnect, proto, Kustomize. No globs → always in context when agentic-workspace is open. |
 | `go-code-rules.mdc` | Go only | Style, errors, API design, zerolog logging. `globs: ["**/*.go"]`. |
 | `rust-code-rules.mdc` | Rust only | Performance, idioms, errors, async. `globs: ["**/*.rs", "**/Cargo.toml", "**/Cargo.lock"]`. Includes guard: if project is not Rust, only report. |
 | `java-code-rules.mdc` | Java only | SLF4J logging (with isXxxEnabled() checks), Spring Boot, structure. `globs: ["**/*.java", "**/pom.xml", "**/build.gradle"]`. Includes guard: if project is not Java, only report. |
-| `drawio-rules.mdc` | Draw.io diagrams | Naming, colors, layout, flow lines, version workflow, CHANGELOG. `globs: ["**/*.drawio", "**/*.drawio.svg", "**/docs/**/diagrams/**"]`. |
+| `python-code-rules.mdc` | Python only | Strict typing, explicit exceptions, mutable-default ban, pytest/TDD, ports/adapters, ruff/mypy/pyscn tooling, Learning Mode briefings. `globs: ["**/*.py", "**/pyproject.toml", "**/requirements*.txt", ...]`. Includes guard: if project is not Python, only report. |
+
+> Draw.io diagram guidance is no longer a rule. It now lives in the **drawio-diagrams** skill (`.cursor/skills/drawio-diagrams/SKILL.md`); see the AGENTS.md skills table.
 
 ## Adding or updating a rule
 
 1. **Decide placement**
-   - **Convention shared by all Go/communicator repos** → workspace-settings `.cursor/rules/` (new or existing .mdc).
+   - **Convention shared by all Go/communicator repos** → agentic-workspace `.cursor/rules/` (new or existing .mdc).
    - **Single-repo or language-specific** → either here with globs (e.g. Go, Rust) or in that repo’s `.cursor/rules/`.
 
 2. **Format**
@@ -68,12 +70,12 @@ When adding a new skill with scripts:
 ## Commands and docs
 
 - **AGENTS.md** — Skills table (skill name, path, scripts dir, when to use) and script layout convention. Update when adding a skill or moving scripts.
-- **.cursor/commands/mr.md** — Command for creating MRs; usable from any repo via `@workspace-settings/.cursor/commands/mr.md`.
+- **.cursor/commands/mr.md** — Command for creating MRs; usable from any repo via `@agentic-workspace/.cursor/commands/mr.md`.
 - **README.md** — Explains folder purpose and usage; update if the rule layout or usage changes.
 
 ## Quick checklist for new rules
 
-- [ ] Correct location (workspace-settings vs repo).
+- [ ] Correct location (agentic-workspace vs repo).
 - [ ] Frontmatter has `description`; add `globs` if file-specific.
 - [ ] Language guard in body if rule must not run for other languages.
 - [ ] `rules.md` / AGENTS.md updated if the change affects shared conventions or agent scope.

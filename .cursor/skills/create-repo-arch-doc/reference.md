@@ -13,7 +13,7 @@ The **arch-docs** HLD directory (`docs/HLD/`) is the single source of truth for 
 | 4 | `04-system-dependencies.md` | Dependencies on other NSP systems. |
 | 5 | `05-apis.md` | API design, contracts; C1 use cases, C2 specs; internal/external, backward compatibility. |
 | 6 | `06-models.md` | Data models and relationships. |
-| 7 | `07-data-flow.md` | Data lifecycle, creation/discovery/update/storage; flows between components. **Sequence/flow diagram:** use **draw.io** (rules: `drawio-rules.mdc`). See **Data flow diagram (Ch 7)** below. |
+| 7 | `07-data-flow.md` | Data lifecycle, creation/discovery/update/storage; flows between components. **Sequence/flow diagram:** use **draw.io** (skill: `drawio-diagrams`). See **Data flow diagram (Ch 7)** below. |
 | 8 | `08-security-access-control.md` | Security architecture and access policies. |
 | 9 | `09-platform-considerations.md` | Platform considerations (HA, DR, footprint/scaling, deployment). See **Platform considerations (Ch 9)** below. |
 | 10 | `10-resource-usage.md` | Resource requirements and estimates. |
@@ -266,7 +266,7 @@ When the service ingests data from an external source, document the field mappin
 
 ## Data flow diagram (Ch 7)
 
-**Sequence diagram (preferred):** Use **draw.io** with the **Sequence diagram (UML)** pattern in `drawio-rules.mdc`: `umlLifeline` participants, time top-to-bottom, elbow vertical messages, yellow/green/gray theme (callers, service, storage). **Flow diagram:** Alternatively use flowchart rules in the same file (naming, colors, vertices before edges).
+**Sequence diagram (preferred):** Use **draw.io** with the **Sequence diagram (UML)** pattern in the **drawio-diagrams** skill: `umlLifeline` participants, time top-to-bottom, elbow vertical messages, yellow/green/gray theme (callers, service, storage). **Flow diagram:** Alternatively use flowchart rules in the same skill (naming, colors, vertices before edges).
 
 ### Direct draw.io generation (preferred)
 
@@ -396,7 +396,7 @@ sequenceDiagram
 
 NSP arch Confluence pages should mirror **`arch-docs/docs/HLD/index.md`** (chapters 1–12): Architecture Overview → Sign-Off. When drafting `body.html`, verify every chapter has content or explicit N/A/TODO — not only the cloud-native-heavy sections.
 
-For **reviewing** an existing Confluence arch page against that template, use the **confluence-cloudnative-review** skill (`workspace-settings/.cursor/skills/confluence-cloudnative-review/SKILL.md`), which includes an **HLD template coverage** pass in addition to cloud-native findings.
+For **reviewing** an existing Confluence arch page against that template, use the **confluence-cloudnative-review** skill (`agentic-workspace/.cursor/skills/confluence-cloudnative-review/SKILL.md`), which includes an **HLD template coverage** pass in addition to cloud-native findings.
 
 ---
 
@@ -412,7 +412,7 @@ For **reviewing** an existing Confluence arch page against that template, use th
 | Device Registry HDD (local) | `device-registry/docs/actual/System_Design_HighLevel.md` |
 | Device Registry body (Confluence) | `device-registry/docs/confluence/body.html` |
 | Device Registry data flow draw.io | `device-registry/docs/confluence/diagrams/device_registry_data_flow_v1.drawio` |
-| Draw.io rules | `workspace-settings/.cursor/rules/drawio-rules.mdc` |
-| Confluence scripts | `workspace-settings/.cursor/scripts/` |
+| Draw.io diagrams skill | `agentic-workspace/.cursor/skills/drawio-diagrams/SKILL.md` |
+| Confluence scripts | `agentic-workspace/.cursor/scripts/` |
 | Read template via script | `confluence_read_page.py --page-id 2162422282` |
 | Read Device Registry page | `confluence_read_page.py --title "Device Registry Arch" --space-key NSPArchEvo` |

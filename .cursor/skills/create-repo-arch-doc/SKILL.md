@@ -60,7 +60,7 @@ The **Confluence** `body.html` (and any single-page arch wiki view) must **cover
 
 ## Output layout (per repo)
 
-All arch doc outputs live under the **target repo's own `docs/` directory** — not in workspace-settings. Standard layout:
+All arch doc outputs live under the **target repo's own `docs/` directory** — not in agentic-workspace. Standard layout:
 
 ```
 <repo>/docs/
@@ -210,14 +210,14 @@ For services with persistence (etcd, DB), add a projection table:
 
 ## Draw.io diagram generation
 
-Generate draw.io diagrams **directly** as `.drawio` XML files — do not require Mermaid as an intermediate step. Follow `workspace-settings/.cursor/rules/drawio-rules.mdc` for all styling. Store diagrams under `<repo>/docs/confluence/diagrams/`.
+Generate draw.io diagrams **directly** as `.drawio` XML files — do not require Mermaid as an intermediate step. Follow the **drawio-diagrams** skill (`agentic-workspace/.cursor/skills/drawio-diagrams/SKILL.md`) for all styling. Store diagrams under `<repo>/docs/confluence/diagrams/`.
 
 ### Component diagram (direct draw.io)
 
 Generate a **flowchart-style** `.drawio` file with:
 
 - **Container rectangle** for the main service (e.g. "DEVICE REGISTRY") — `UPPERCASE`, bold, `fontSize=14`, `align=center`.
-- **Child component shapes** inside the container — rounded rectangles, 120×80px, light fills per category (see `drawio-rules.mdc` component colors).
+- **Child component shapes** inside the container — rounded rectangles, 120×80px, light fills per category (see the **drawio-diagrams** skill component colors).
 - **External subgraphs** — group Clients, Data Sources, Persistence, Consumers as separate regions.
 - **Connectors** — `strokeColor=#2c5282`, `strokeWidth=2`, `edgeStyle=orthogonalEdgeStyle`; edge labels with `labelBackgroundColor=#ffffff`, `fontColor=#333333`.
 - **Vertices before edges** in XML for correct rendering.
@@ -240,12 +240,12 @@ Reference implementation: `device-registry/docs/confluence/diagrams/device_regis
 
 In `body.html` (Confluence):
 ```html
-<p><em>Component diagram:</em> <a href="diagrams/<repo>_components_v1.drawio">draw.io</a> (rules: <code>.cursor/rules/drawio-rules.mdc</code>). In Confluence: Insert &rarr; draw.io and upload the diagram.</p>
+<p><em>Component diagram:</em> <a href="diagrams/<repo>_components_v1.drawio">draw.io</a> (skill: <code>.cursor/skills/drawio-diagrams/SKILL.md</code>). In Confluence: Insert &rarr; draw.io and upload the diagram.</p>
 ```
 
 In local HDD (markdown):
 ```markdown
-*Component diagram:* [<repo>_components_v1.drawio](diagrams/<repo>_components_v1.drawio) (draw.io; rules: `.cursor/rules/drawio-rules.mdc`).
+*Component diagram:* [<repo>_components_v1.drawio](diagrams/<repo>_components_v1.drawio) (draw.io; skill: `.cursor/skills/drawio-diagrams/SKILL.md`).
 ```
 
 ### When to generate which diagrams
@@ -261,7 +261,7 @@ In local HDD (markdown):
 ## Confluence publish
 
 - **Prerequisites:** In the same terminal used for scripts, run:  
-  `cd <workspace-settings>/.cursor/scripts && source confluence_env.sh`  
+  `cd agentic-workspace/.cursor/scripts && source confluence_env.sh`  
   (Requires `confluence_env.local` with `CONFLUENCE_BASE_URL`, `CONFLUENCE_USERNAME`, `CONFLUENCE_API_TOKEN`.)
 
 - **Read template/sample (optional):**  
@@ -309,8 +309,8 @@ Each repo owns its arch docs under its own `docs/` directory:
 | HLD chapter templates | `arch-docs/docs/HLD/` (index + 01–12) | Section order, C1/C2 guidance |
 | Component-architect agent | `arch-docs/.cursor/agents/component-architect.md` | PRD → HLD workflow |
 | Documentation guidelines | `arch-docs/docs/documentation-guidelines.md` | Backstage techdocs, mkdocs, Mermaid, catalog-info |
-| Draw.io rules | `workspace-settings/.cursor/rules/drawio-rules.mdc` | Naming, colors, layout, sequence diagrams, versioning |
-| Confluence scripts | `workspace-settings/.cursor/scripts/` | `confluence_env.sh`, `confluence_read_page.py`, `confluence_create_page.py` |
+| Draw.io diagrams skill | `agentic-workspace/.cursor/skills/drawio-diagrams/SKILL.md` | Naming, colors, layout, sequence diagrams, versioning |
+| Confluence scripts | `agentic-workspace/.cursor/scripts/` | `confluence_env.sh`, `confluence_read_page.py`, `confluence_create_page.py` |
 | Confluence template | pageId **2162422282** | Structure reference (do not create under) |
 | Parent for new pages | pageId **2069174542** | `--parent-id` for `confluence_create_page.py` |
 | Device Registry arch | [Confluence](https://confluence.ext.net.nokia.com/display/NSPArchEvo/Device+Registry+Arch), `device-registry/docs/confluence/body.html` | Gold-standard reference |

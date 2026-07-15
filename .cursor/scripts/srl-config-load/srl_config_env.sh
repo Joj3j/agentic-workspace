@@ -2,7 +2,7 @@
 # Source SRL config-load env for srl_load_config.py
 #
 # Usage (same shell as the script):
-#   cd workspace-settings/.cursor/scripts && source srl_config_env.sh
+#   cd agentic-workspace/.cursor/scripts && source srl_config_env.sh
 #
 # First time:
 #   cp srl_config_env.local.example srl_config_env.local

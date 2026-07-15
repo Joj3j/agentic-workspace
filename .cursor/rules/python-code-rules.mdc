@@ -1,0 +1,284 @@
+---
+description: Python code quality prompts and guidelines. Beginner-friendly, teaches principles as it applies them. Only active for Python projects.
+globs: ["**/*.py", "**/pyproject.toml", "**/requirements*.txt", "**/setup.py", "**/setup.cfg", "**/Pipfile"]
+---
+
+# Python Coding Standards & AI Rules
+
+**If the project does not use Python, do not apply these rules; only report that the project is not Python.**
+
+You are an expert Python developer. Always adhere to these idiomatic patterns:
+
+These rules incorporate portable guidance from community references linked in **Reference** (ludo-technologies/python-best-practices, agent-skills-standard/python, cursor.directory/plugins/python). They complement workspace-wide rules when present — avoid duplicating Go/Java/Rust-specific content here.
+
+Target **Python 3.11+** unless the project pins an older version in `pyproject.toml` or `requires-python`.
+
+## 1. Code Style & Modern Typing
+
+- Follow **PEP 8**. Format with **ruff format** (or Black if the repo already uses it).
+- **Naming:** `snake_case` for functions and variables; `PascalCase` for classes; `UPPER_SNAKE_CASE` for module-level constants.
+- **Import grouping:** stdlib → third-party → local (one blank line between groups). Prefer absolute imports.
+- Use **f-strings** for string formatting; use **`pathlib.Path`** for filesystem paths (not `os.path` string joins).
+- Add `from __future__ import annotations` in every module so forward references resolve lazily and circular imports are easier to manage.
+- Favor the **standard library** over external dependencies unless a specialized library is requested or clearly superior.
+
+### 1a. Strict type hints (required)
+
+- **Every function and method** must have parameter and return type annotations (including `-> None` where appropriate).
+- Use **builtin generics:** `list[str]`, `dict[str, int]`, `tuple[int, ...]` — not `typing.List`, `typing.Dict`, `typing.Tuple`.
+- Use **`str | None`** union syntax — not `Optional[str]` (Python 3.10+).
+- **Ban bare `Any`** outside narrowly scoped adapters (e.g. JSON boundary shims). For structured data prefer:
+  - **`@dataclass`** for internal data containers
+  - **`typing.Protocol`** for structural interfaces (prefer over ABCs)
+  - **`typing.TypedDict`** for JSON-shaped dicts (`total=False` for optional keys)
+  - **Pydantic `BaseModel`** for data crossing trust boundaries (HTTP, config, CLI)
+- Run **`mypy --strict`** (or `basedpyright` if the repo adopts it) and treat type errors as blockers.
+- **Verify runtime casts** at boundaries: use `isinstance` checks or Pydantic validation — do not assume `dict` shape without validation.
+
+```python
+# Good
+def fetch_user(user_id: str) -> User | None:
+    ...
+
+# Bad — fake typing
+def fetch_user(user_id) -> Any:
+    ...
+```
+
+## 2. Error Handling
+
+- **Never swallow exceptions.** No naked `except:` and no `except Exception: pass`.
+- Catch the **narrowest exception** you can explain (e.g. `json.JSONDecodeError`, not `Exception`).
+- **Roll back mutable state** (DB transaction, temp file, in-memory cache) before re-raising or returning failure.
+- Preserve the cause chain: `raise ServiceError("context") from err`.
+- Log at service/boundary layers with context; do not duplicate the same error at every stack frame.
+- **Do not convert real failures into vague success.** Return explicit failure types, raise domain exceptions, or structured error results — never silently mark work complete without evidence.
+- At the process boundary, return explicit non-success exit codes:
+
+```python
+def main() -> int:
+    try:
+        start_application()
+    except StartupError:
+        logger.exception("Application startup failed")
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+## 3. Mutable Default Argument Pitfall (prohibited)
+
+**Never** use mutable defaults (`list`, `dict`, `set`) in function signatures. Defaults are evaluated **once at definition time**, not per call — all callers share the same object.
+
+```python
+# PROHIBITED — shared list across all calls
+def append_to(element: int, target: list[int] = []) -> list[int]:
+    target.append(element)
+    return target
+
+# CORRECT — None sentinel, fresh list per call
+def append_to(element: int, target: list[int] | None = None) -> list[int]:
+    if target is None:
+        target = []
+    target.append(element)
+    return target
+```
+
+Ruff rule **B006** flags mutable argument defaults — enable it in CI.
+
+## 4. Design Principles & Architecture
+
+Distilled from clean-code and SOLID practice — apply with Python idioms (`Protocol`, composition, small modules):
+
+- **DRY / KISS / YAGNI:** Single source of truth for validation and policy; simplest correct fix first; no speculative abstractions until a second real use case exists. Incidental similarity is not always duplication — do not merge concepts that will evolve on different axes.
+  - **Check existing context before deriving:** Before adding a helper or computed field, audit what data is already in scope (parameters, dataclass fields, context vars). Prefer removing redundancy over adding extraction logic.
+- **SRP:** One module/class should have one reason to change; split validation, transport, persistence, and orchestration when they churn independently.
+- **OCP:** Extend via new types and small `Protocol`s — not by growing a central `match`/`if-elif` on strings for every variant.
+- **LSP & contracts:** Implementations must honor documented semantics (timeouts, error mapping, None behavior). Subtypes that weaken guarantees break substitutability.
+- **ISP:** Prefer several small `Protocol`s over one kitchen-sink interface.
+- **DIP:** High-level modules depend on narrow `Protocol`s; wire concrete implementations in startup/wiring (`main.py`, `app.py`, factory modules). Avoid `ConcreteClient()` inside business logic.
+- **Composition over inheritance:** Prefer injecting collaborators via `__init__` over deep class hierarchies.
+- **Early return:** Guard clauses to reduce nesting; avoid deep `if` pyramids.
+- **Pure functions:** Prefer functions without side effects for domain logic — easier to test and reason about.
+
+### 4a. Ports & adapters (clean architecture)
+
+For services and backends (not one-off scripts):
+
+- Keep **domain decisions** independent from HTTP frameworks, DB drivers, env vars, and queue clients.
+- Define **ports** (`Protocol`) where callers need substitution; implement **adapters** at the edge (DB, HTTP, subprocess, storage).
+- **Compose dependencies** in startup/wiring modules — not in module-level globals or hidden singletons.
+- **No DB/HTTP imports in domain policy** modules.
+- **No one-function blobs** spanning parse, dispatch, verify, and notify — split orchestration into focused services.
+- Standard layout when building apps:
+
+```
+src/<package>/
+  domain/          # pure contracts, policy, models
+  application/     # use cases / services
+  adapters/        # DB, HTTP, CLI, queue implementations
+  main.py          # wiring and startup
+tests/             # mirrors src structure
+docs/
+pyproject.toml
+```
+
+## 5. Testing (pytest, test-first for structural changes)
+
+- Use **pytest** exclusively — not `unittest.TestCase` or `setUp`/`tearDown`.
+- **Test-driven for structural logic:** Before editing orchestration, parsing, routing, or boundary code, **write the failing test first** (red → green → refactor).
+- Place all tests under **`tests/`**; mirror `src/` structure. Name files `test_<module>.py`; name functions `test_<behavior>`.
+- **Type-annotate test functions** and add brief docstrings for non-obvious cases.
+- **Mock at external seams only:** DB, RPC, HTTP, subprocess, filesystem, env — use `pytest.fixture`, `monkeypatch`, or `pytest-mock`. Do not spray patches across every internal helper.
+- Use **`pytest-asyncio`** for async code; do not spin event loops manually in tests.
+- **No live network or DB in unit tests.** Use fakes or in-memory substitutes.
+- Assert **structured outcomes** (return values, raised exceptions, emitted events) — not implementation trivia.
+- Cover **negative paths:** malformed input, missing env, timeout, stale state.
+
+```python
+# Arrange-Act-Assert pattern
+def test_create_user_rejects_duplicate_email(user_service: UserService) -> None:
+    user_service.create(email="a@b.com", name="A")
+    with pytest.raises(DuplicateEmailError):
+        user_service.create(email="a@b.com", name="B")
+```
+
+## 6. Concurrency & Performance
+
+- Use **`asyncio` / `await`** for I/O-bound concurrency. Never block the event loop with synchronous network, disk, or CPU-heavy work — offload to `asyncio.to_thread()` or `run_in_executor`.
+- Use **`asyncio.gather`** for independent concurrent tasks; **`asyncio.Semaphore`** to cap concurrency; **`async with`** for async resource management.
+- Use **generators and generator expressions** for large datasets — O(1) memory vs building full lists.
+- Use **`dict.get()`** for defaults; **`set`** for membership tests (O(1)); **`str.join()`** for string assembly in loops (not `+=`).
+- **Profile before optimizing:** `cProfile`, `py-spy`, or `scalene` — state a falsifiable hypothesis and validate with data. Do not tune timeouts or caches without measurement.
+- Prefer **list comprehensions** over manual loops for simple transforms (clearer and often faster).
+
+**When NOT to optimize early:**
+- Do not replace `json`/`pydantic` wholesale without profiling evidence.
+- Do not sacrifice readability for marginal gains outside measured hot paths.
+
+## 7. Security
+
+- **Secrets** live in environment variables or secret stores — never hardcoded in code, tests, fixtures, or docs.
+- **Parameterize SQL** — no string interpolation of user input into queries.
+- **Subprocess:** `subprocess.run([...], shell=False)` with explicit argument lists. No shell string execution for user-shaped input.
+- **Validate file paths** from untrusted input; use `pathlib` and check resolved paths stay within expected roots.
+- **Redact secrets** from logs, reports, and error messages.
+- **Pin dependency versions** in `pyproject.toml` / lockfile. Run **`pip-audit`** or equivalent in CI after dependency changes.
+- Prefer **JSON/Protobuf/Avro with schema validation** over `pickle` for wire formats crossing trust boundaries.
+
+## 8. Tooling & Project Layout
+
+When the repo has no existing toolchain, adopt this minimal stack (from ludo-technologies/python-best-practices tooling):
+
+| Tool | Purpose |
+|------|---------|
+| **uv** | Fast package and env management |
+| **ruff** | Lint + format (replaces flake8, isort, Black) |
+| **mypy** | Static type checking (`strict = true`) |
+| **pytest** | Testing |
+| **pyscn** | Dead code, duplicates, complexity gates |
+
+Minimal `pyproject.toml` dev deps:
+
+```toml
+[project.optional-dependencies]
+dev = ["ruff", "mypy", "pytest", "pytest-cov", "pytest-asyncio", "pyscn"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "BLE", "SIM", "PTH", "S110", "S112"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-v", "--tb=short"]
+```
+
+**AST-pattern audit (mandatory checks):** Run tooling instead of ad-hoc scripts:
+- `ruff check .` — catches mutable defaults (B006), bare except (E722), blind except (BLE), and style bugs
+- `mypy .` — catches fake types and missing annotations
+- `pyscn check .` — catches dead code, clones, high complexity
+- Integrate all three in CI before merge
+
+**Quick commands:**
+
+```bash
+uv pip install -e ".[dev]"
+ruff check . --fix && ruff format .
+mypy .
+pytest
+pyscn check .
+```
+
+- **When the repo already provides** `pyproject.toml` `[tool.ruff]` / `[tool.mypy]`, treat those configs as source of truth for mechanical checks; this rule file covers architecture and judgment linters do not encode.
+
+## 9. Documentation
+
+- Document **public** functions, classes, and modules with **Google-style docstrings** (Args, Returns, Raises where relevant).
+- Provide concise **README.md** for services and libraries: purpose, setup, run, test commands.
+- Comments explain **why** (invariants, ordering, incident context) — not what the next line obviously does.
+- Keep `docs/` for architecture and design when the project grows beyond a script.
+
+## 10. Learning Mode — Principle Briefings
+
+The user is building Python design skills. When applying a named principle or pattern, add a brief learning note so each change doubles as instruction.
+
+**Format (chat or brief inline comment):**
+
+> **Principle applied:** \<Name\> — \<1–3 sentences: what it is, why here, trade-off\>.
+
+**Examples of when to brief:**
+- SOLID letters (SRP, DIP, OCP, etc.)
+- DRY / KISS / YAGNI decisions
+- Dependency injection via constructor
+- Mutable-default fix
+- TDD red/green flow
+- Ports & adapters boundary
+- `Protocol` vs ABC
+- Pydantic at trust boundary
+- Async pattern (`gather`, `Semaphore`, `to_thread`)
+- Generator vs list for memory
+
+**Rules for briefings:**
+- Keep to **1–3 sentences** — not a lecture.
+- If the same principle was already briefed earlier in the session, use a **one-line callout** only (e.g. `Principle applied: DIP (see earlier)`).
+- Expand only when the user asks for more depth.
+
+## 11. Prohibited Patterns
+
+- NO naked `except:` or `except Exception: pass`.
+- NO mutable default arguments (`def f(x, items=[])`).
+- NO bare `Any` on public APIs without documented justification.
+- NO `unittest` for new tests — use pytest.
+- NO global mutable state for application logic; prefer injection and explicit wiring.
+- NO `pickle` for data from untrusted sources.
+- NO `shell=True` in subprocess for user-influenced commands.
+- NO "TODO" or placeholder logic in delivered code; if incomplete, state why in chat.
+- NO structural refactor without a failing test first (§5).
+
+## 12. Logging
+
+- Use **`logging`** (stdlib) or **structlog** if the project already adopts it.
+- Obtain a logger per module: `logger = logging.getLogger(__name__)`.
+- Use appropriate levels: DEBUG for developer detail, INFO for key events, WARNING for recoverable issues, ERROR for failures.
+- Use **parameterized messages:** `logger.info("User %s logged in", user_id)` — not f-strings in log calls when the message is expensive to build (guard with `logger.isEnabledFor` if needed).
+- **Never log secrets, tokens, or PII.**
+
+---
+
+## Reference
+
+- [ludo-technologies/python-best-practices — coding-standards](https://github.com/ludo-technologies/python-best-practices/blob/main/skills/coding-standards/SKILL.md) — error handling, performance, async, SOLID, documentation, validation, OOP patterns.
+- [ludo-technologies/python-best-practices — tooling](https://github.com/ludo-technologies/python-best-practices/blob/main/skills/coding-standards/tooling.md) — ruff, mypy, pytest, pyscn, uv minimal setup.
+- [agent-skills-standard/python](https://github.com/HoangNguyen0403/agent-skills-standard/tree/develop/skills/python) — architecture, error-handling, testing, security, async-runtime, language, tooling skills.
+- [cursor.directory/plugins/python](https://cursor.directory/plugins/python) — community Python standards and practices for Cursor.
+- **Agent Skills open standard (context):** Skills package domain expertise as `SKILL.md` files with YAML metadata; agents load them on task match (file-based discovery, progressive disclosure). This workspace keeps **language rules** in `.cursor/rules/*.mdc` (always-on via globs) and **task workflows** in `.cursor/skills/<name>/SKILL.md` — use skills for runnable scripts and multi-step procedures, not for baseline coding standards.

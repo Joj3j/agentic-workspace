@@ -1,18 +1,63 @@
 ---
 name: confluence-page
-description: Read or write (create) a Confluence page using the REST API scripts. Use when the user asks to read, fetch, summarize, create, or publish a Confluence page, or gives a Confluence URL. For write/create, asks for the parent page title if not provided.
+description: Read or write (create) a Confluence page using the REST API scripts. Use when the user asks to create or publish a Confluence page, or read+create in one flow. For read-only tasks (summarize, fetch content), prefer confluence-read skill—same env. For write/create, asks for the parent page title if not provided.
 ---
 
 # Confluence page (read / write)
 
 Use this skill when the user asks to **read** or **write** a Confluence page. The Nokia NSP Confluence MCP may be blocked by admin; these scripts use the Confluence REST API directly.
 
+## Terminology conventions (when generating page content)
+
+When **authoring or editing** Confluence content (HLD/arch pages, design write-ups, diagrams), use
+directional terminology consistently. This applies to body HTML, diagram labels, and tables.
+
+### Directional terms — follow NMS/SDN convention
+
+For the direction of an interface or interaction relative to the network elements (NEs / managed
+devices) vs. the clients/applications, use **northbound / southbound** — never `upstream`/`downstream`:
+
+| Term | Meaning | Use for |
+|------|---------|---------|
+| **Southbound** | Towards the **NE / managed device** | Device sessions (gNMI/NETCONF Subscribe, get/set), the connection to routers/switches |
+| **Northbound** | Towards the **clients / consumers / OSS** | Client APIs, gRPC notification streams, app-facing fan-out |
+
+- A service's NE-facing side is its **southbound** interface; its client-facing side is its
+  **northbound** interface. Do **not** describe the NE connection as "upstream" (it reads backwards
+  for an NMS audience).
+
+### Required: every generated page has a Terminology section
+
+**Every** Confluence page authored or edited through this skill **must include a `Terminology`
+section.** Place it near the top (after the intro/status paragraph, before the first numbered
+section) so the terms are defined before they are used.
+
+- Render it as a two-column table: **Term → Meaning**.
+- Cover the directional terms (**southbound**, **northbound**) plus every domain/jargon term used on
+  the page (e.g. NE, gateway, worker, merge, refcount, dedup, sync/delta, reconcile, fan-out,
+  northbound/southbound interface, etc.).
+- If editing an existing page that has no Terminology section, add one.
+- Keep it in sync: when a new term is introduced elsewhere on the page, add it to the table.
+
+### Algorithm / data-flow descriptions — use data-flow language with explicit context
+
+When describing an **algorithm, pipeline, or data flow** (not an NMS interface direction),
+`upstream`/`downstream` are acceptable because they describe producer→consumer ordering — but only
+when the **reference point is stated explicitly**, e.g. "upstream of the merge stage", "downstream
+of the filter". A bare "upstream"/"downstream" without an anchor is ambiguous; either name the
+stage it is relative to, or fall back to northbound/southbound for interface direction.
+
+| Context | Use | Example |
+|---------|-----|---------|
+| Interface direction (NE vs client) | northbound / southbound | "the southbound gNMI Subscribe to the NE" |
+| Pipeline / algorithm stage ordering | upstream / downstream **+ explicit anchor** | "buffering happens downstream of the dedup stage" |
+
 ## Prerequisites — environment setup
 
 Before running either script, the Confluence env vars must be set **in the same terminal**:
 
 ```bash
-cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh
+cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh
 ```
 
 This sources `confluence_env.local` (gitignored) which must export:
@@ -31,10 +76,10 @@ If `confluence_env.local` does not exist, tell the user:
 
 | Script | Location |
 |--------|----------|
-| Read | `workspace-settings/.cursor/scripts/confluence/confluence_read_page.py` |
-| Create | `workspace-settings/.cursor/scripts/confluence/confluence_create_page.py` |
-| Env loader | `workspace-settings/.cursor/scripts/confluence/confluence_env.sh` |
-| Secrets template | `workspace-settings/.cursor/scripts/confluence/confluence_env.local.example` → copy to `confluence_env.local` (gitignored) |
+| Read | `agentic-workspace/.cursor/scripts/confluence/confluence_read_page.py` |
+| Create | `agentic-workspace/.cursor/scripts/confluence/confluence_create_page.py` |
+| Env loader | `agentic-workspace/.cursor/scripts/confluence/confluence_env.sh` |
+| Secrets template | `agentic-workspace/.cursor/scripts/confluence/confluence_env.local.example` → copy to `confluence_env.local` (gitignored) |
 
 ---
 
@@ -64,40 +109,20 @@ When **generating** a Confluence body (e.g. from an arch doc skill or user reque
 2. Place draw.io diagrams in `<repo>/docs/confluence/diagrams/`.
 3. Reference diagrams from the HTML body with relative links and Confluence upload instructions.
 
-**Do not** store generated HTML or diagrams in `workspace-settings/docs/`.
+**Do not** store generated HTML or diagrams in `agentic-workspace/docs/`.
 
 ---
 
 ## Read a page
 
-### By title and space
+**Read-only** steps (title/space, page ID, `--format`, URL parsing, examples) are documented in **`agentic-workspace/.cursor/skills/confluence-read/SKILL.md`**. Use that skill when the user only needs to **read** or **summarize** a page—it shares this skill’s **prerequisites** and `confluence_read_page.py`.
+
+Minimal invocation after sourcing env:
 
 ```bash
+cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh
 python3 confluence_read_page.py --title "Page Title" --space-key NSPArchEvo
 ```
-
-- `--space-key` defaults to `NSPArchEvo`.
-- From a URL like `.../display/NSPArchEvo/MDC+Wrapper+Server`, decode `+` → space for `--title`, use path segment for `--space-key`.
-
-### By page ID
-
-```bash
-python3 confluence_read_page.py --page-id 123456789
-```
-
-### Output format
-
-| Flag | Output |
-|------|--------|
-| `--format text` (default) | Readable plain text (HTML stripped) |
-| `--format html` | Raw HTML body |
-| `--format json` | Full API response |
-
-### Agent steps (read)
-
-1. Source env: `cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh`
-2. Run the read script with the appropriate flags.
-3. Use stdout as the page content. If exit code is non-zero or stderr has errors, report the error.
 
 ---
 
@@ -145,7 +170,7 @@ python3 confluence_create_page.py \
 
 ### Agent steps (write)
 
-1. Source env: `cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh`
+1. Source env: `cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh`
 2. Determine the **parent page**:
    - If the user gave a parent page title or ID → use it.
    - If the context implies a known parent (e.g. arch pages use parent ID `2069174542`) → use it.
@@ -155,6 +180,8 @@ python3 confluence_create_page.py \
    - If an existing `<repo>/docs/confluence/body.html` is available → use `--body-file`.
    - If generating new content → write it to `<repo>/docs/confluence/body.html` first, then use `--body-file`.
    - If the source is markdown → convert to HTML (e.g. `pandoc -f markdown -t html`) and save to `<repo>/docs/confluence/body.html`.
+   - **Ensure the body includes a `Terminology` section** (Term → Meaning table near the top) per
+     "Required: every generated page has a Terminology section" above. Add one if missing.
 5. Run the create script. On success, report the page URL from stdout. On failure, report the error.
 6. If diagrams exist in `<repo>/docs/confluence/diagrams/`, remind the user to upload them via Confluence UI (Insert → draw.io).
 

@@ -14,3 +14,4 @@ K8S_SSH_OPTS=""             # extra ssh options, e.g. "-o StrictHostKeyChecking=
 CLS_FWD_PORT="40055"        # comm-layer-server gRPC
 DR_FWD_PORT="40058"         # device-registry gRPC
 GNMI_FWD_PORT="40051"       # comm-worker-gnmi gRPC
+SUB_FWD_PORT="40056"        # comm-subscription-server gRPC

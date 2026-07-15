@@ -2,7 +2,7 @@
 # Source OpenSearch / NSP gateway env for nsp_opensearch_log_report.py
 #
 # Usage:
-#   cd workspace-settings/.cursor/scripts && source opensearch_env.sh
+#   cd agentic-workspace/.cursor/scripts && source opensearch_env.sh
 #
 # First time:
 #   cp opensearch_env.local.example opensearch_env.local

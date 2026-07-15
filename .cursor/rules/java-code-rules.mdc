@@ -1,6 +1,6 @@
 ---
-description: Java code quality rules and guidelines. Only active for Java projects.
-globs: ["**/*.java", "**/pom.xml", "**/build.gradle", "**/build.gradle.kts"]
+description: Java code quality rules for NSP MDM; adapter/Karaf-first; core libs mdm-core-sbi, mdm-core-adapter, mdm-core-common; Spring when Gradle indicates it.
+globs: ["**/*.java", "**/pom.xml", "**/build.gradle", "**/build.gradle.kts", "**/src/main/resources/meta/**/*.json"]
 ---
 
 # Java Coding Standards & AI Rules
@@ -9,12 +9,94 @@ globs: ["**/*.java", "**/pom.xml", "**/build.gradle", "**/build.gradle.kts"]
 
 You are an expert in Java programming, Spring Boot, Maven, JUnit, and related Java technologies. Always adhere to these rules:
 
+## NSP MDM: default review context (adapter → Karaf)
+
+- **Most MDM change reviews** target **adapter** repositories: device/network model I/O, transformation to OpenConfig or IETF-style NSP models, and **`src/main/resources/meta/`** JSON (e.g. `*Mappings.json`, class maps). These artifacts are built as **OSGi bundles** and **deployed to Karaf**—treat **§0** (network reads, filters, memory, batching), **§12** (concurrency), **NSP MDM: adaptation & declarative model mapping**, and the **three core libs** (**`mdm-core-sbi`**, **`mdm-core-adapter`**, **`mdm-core-common`**) as the **primary** review bar.
+- **Spring Boot / embedded Tomcat** apps are a **smaller** slice of the estate. Apply **§3–§5** only after Gradle (per module) shows Spring Boot; do not let Spring idioms override OSGi adapter rules in Karaf-bound modules.
+
+**Strong signals for adapter / Karaf work (use even before a deep Gradle parse):** repo or module name prefixes such as `mdm-adp-*`, presence of `**/src/main/resources/meta/**/*.json`, bundle/KAR/feature packaging, or Nokia↔OpenConfig mapping files alongside adapter Java.
+
+## NSP MDM: detect runtime from Gradle (before applying Spring vs Karaf rules)
+
+MDM repos usually declare the runtime in **`build.gradle`** / **`build.gradle.kts`**. Infer context from dependencies and plugins; **do not assume** every module is Spring Boot—**default mentally to Karaf adapter** when naming and `meta/` artifacts match the paragraph above, then confirm in Gradle.
+
+**Treat as Spring Boot / embedded Tomcat** when you see any of:
+
+- `org.springframework.boot` Gradle plugin and/or `spring-boot-starter-*` dependencies
+- `bootJar` / `bootRun` tasks, or `spring-boot-dependencies` BOM
+- Typical starters: `spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `spring-boot-starter-actuator`, etc.
+
+→ Apply **§3–4** (Spring Boot, profiles, MVC/REST), Tomcat-embedded conventions, and Spring Test patterns in **§5**.
+
+**Treat as Karaf / OSGi adaptation or framework** when you see any of:
+
+- Dependencies or plugins mentioning **Karaf**, **OSGi**, **Felix**, **Pax** (e.g. `org.apache.karaf.*`, `org.osgi.*`, `maven-bundle-plugin`, **bnd** / `biz.aQute.bnd.builder`)
+- **Feature** / **KAR** packaging, `karaf-maven-plugin`, or bundles exporting `META-INF/MANIFEST.MF` with `Bundle-SymbolicName`
+
+→ Prefer **OSGi service patterns**, bundle lifecycle, and adaptation rules in **§0** (network reads, filters, transformation memory). Assume **Karaf deployment** for release unless the module is explicitly a standalone Spring Boot app. **Do not** apply Spring MVC/`@RestController` rules to pure OSGi bundles unless the file clearly mixes Spring (some repos have both in different modules—use **per-module** `build.gradle`).
+
+When a **multi-project** Gradle repo contains both kinds of subprojects, **select rules per subproject** by that subproject’s own `build.gradle`.
+
+## NSP MDM: adaptation & declarative model mapping
+
+- **Adaptation work** often reads **network/device models** (e.g. Nokia YANG `nokia-conf`, `nokia-state`) and maps them to **OpenConfig / IETF-style** tree paths consumed by NSP (e.g. `openconfig-network-instance:/network-instances/...`).
+- **Declarative mappings** may live under `src/main/resources/meta/` as JSON (class maps, device attribute maps, NE type/version matrix). Treat these as **authoritative pairing** between OpenConfig `classId` / `attributeName` and device `deviceClassId` / `deviceAttribute`.
+- **Example (repo pattern):** `mdm-adp-openconfig-network-instance-v1-sros/src/main/resources/meta/openconfigToDeviceAttributeMappings.json` maps OpenConfig network-instance classes to Nokia configure/state leaves—for instance OpenConfig `openconfig-network-instance:/network-instances/network-instance/config` combined with definitions on `nokia-conf:/configure/router`, `nokia-conf:/configure/service/vprn`, and `nokia-state:/state/service/vprn` (attribute-level `deviceAttributes` entries).
+- When editing mappings or Java that consumes them: keep **namespace prefixes** (`openconfig-network-instance:`, `nokia-conf:`, `nokia-state:`) consistent with YANG; validate **NE type/version** blocks (`neTypes` / `neVersions`) against supported platforms; prefer **narrow device reads** that match the mapped `deviceClassId` subtrees instead of full configuration trees.
+
+## NSP MDM: core APIs for Karaf adapters (`mdm-core-sbi`, `mdm-core-adapter`, `mdm-core-common`)
+
+Treat these three as **peer core libraries** for Karaf adapter and mediation work—check them **before** adding new helpers or parallel abstractions:
+
+- **`mdm-core-sbi`** (`C:/NSP/MDM/mdm-core-sbi`) — service boundary: **`FilterNode`**, **`DeviceReadRequestBuilder`** / **`IDeviceReadRequestBuilder`**, **`IRxDevicePojoManager`**, **`IDevicePojo`**, **`IReadContext`**, **`IAdaptationFdn`**, depth on the builder, etc.
+- **`mdm-core-adapter`** (`C:/NSP/MDM/mdm-core-adapter`) — adaptation integration (AMI helpers, wiring used by `mdm-adp-*` bundles).
+- **`mdm-core-common`** (`C:/NSP/MDM/mdm-core-common`) — **shared utilities** used across adapters and core (e.g. **`com.nokia.nsp.mvm.core.common.api.utils`**: **`IFileMemory`**, **`IMapFileMemory`**, **`IKeyHashCodeBuilder`**, and other cross-cutting helpers). **As important as SBI and adapter** for reuse and consistent behavior; prefer extending or calling existing APIs here over duplicating logic in `mdm-adp-*`.
+
+**`FilterNode` (narrow tree reads):**
+
+- Class **`com.nokia.nsp.mdm.core.sbi.api.util.FilterNode`** — tree of nodes/leaves (constructors with name + optional XML namespace; **`addChild`**, **`addLeaf`**).
+- Use **`IDeviceReadRequestBuilder.addTreeFilter(FilterNode)`** so the SBI builds a **`DeviceFilter`** from `FilterNode.childs()` / `leafs()` (see `DeviceReadRequestBuilderImp`).
+- Typical NETCONF-style query: `new DeviceReadRequestBuilder().setClassId("<yang-root>:/path").addTreeFilter(XyzFilter.getNode()).build()` then **`deviceAdaptation.read(request, readContext)`** on **`IRxDevicePojoManager`**.
+
+**File-backed memory (large read results, bounded heap):**
+
+- Types such as **`IFileMemory`**, **`IMapFileMemory`** live in **`mdm-core-common`** (package **`com.nokia.nsp.mvm.core.common.api.utils`**) — iteration plus **`cleanup()`**; use when many **`IDevicePojo`** instances must be aggregated without retaining the whole tree on-heap.
+- Adapters combine **`IDevicePojoMemoryCacheFile.createIMapFileMemory(...)`** (bounded capacity, NE id/type/version, key/hash policy) with filtered reads. **Always call `cleanup()` in `finally`** after iteration (pattern in `FlashDetailsReadAdaptation`).
+
+**Reference implementations (NETCONF query + gNMI GET split, model-driven):**
+
+- **SROS:** `mdm-adp-cmodel-equipment-1-0-0-sros-16-0-r4/src/main/java/com/nokia/adaptation/sros/impl/ami/equipment/FlashDetailsReadAdaptation.java` — if **`modelReadRequest.getFdn()`** (`IAdaptationFdn`) is set → **`GnmiGetReadAdaption.handleGetReadAdaption`**; else **`readFlashStateWithFilter`**: `setClassId("nokia-state:/state/cpm").addTreeFilter(StateFilter.getCpmNode())`, **`read(...).toList().blockingGet()`** into **`IMapFileMemory`**, **`cleanup()`** in **`finally`**.
+- **SRL:** `mdm-adp-cmodel-equipment-1-0-0-srl/src/main/java/com/nokia/adaptation/srl/impl/ami/equipment/card/CardDetailsReadAdaption.java` — same **FDN present → gNMI** branch; query path uses **`srl_nokia-platform:...`** / **`srl_nokia-interfaces:...`** class IDs and **`addTreeFilter(LineCardFilter.getLineCardFilter())`** (and related **`DeviceReadRequestBuilder`** calls) with **`ReadContext.setReadFromNetwork(true)`** where peers do.
+
+**Multi-vendor (Cisco, Juniper, Huawei, …):** mediation stays **model-driven** — same **`FilterNode` + `DeviceReadRequestBuilder` + `IRxDevicePojoManager.read`** and optional **`IMapFileMemory` / `IFileMemory`** patterns; **`setClassId`** strings, filter helper classes, and gNMI entrypoints differ per NE model. For new vendor paths, **clone the closest existing `mdm-adp-*` read adaptation** (package layout under `com.nokia.adaptation.<vendor>` or peer repos) rather than inventing a parallel stack.
+
+**gNMI note:** when the AMI request carries an **FDN**, adapters commonly delegate to **`GnmiGetReadAdaption`** (vendor-specific subclass under the adapter module); filtered **query** reads remain the **`FilterNode`** + **`DeviceReadRequestBuilder`** path above.
+
+## 0. Design, Options & Resource Fit
+
+- **Plan before coding:** For non-trivial design changes or fixes, align with current repo context (existing patterns, modules, tests). Prefer the smallest change that meets the requirement.
+- **Consider multiple options:** Briefly weigh alternatives (e.g. sync vs async, batch vs per-item, cache vs direct read, in-process vs delegated). **Recommend the best fit** for CPU, memory, threads, and I/O given the workload; do not default to the most complex option.
+- **Design principles (DRY / KISS / YAGNI + SOLID):** Keep a single source of truth for validation/policy, choose the simplest correct fix first, and avoid speculative abstractions or config branches until a second real use case exists. Treat incidental similarity carefully; do not merge concepts that will evolve on different axes.
+- **Check existing context before deriving new fields/helpers:** Before adding extraction helpers, computed fields, or extra log attributes, verify what already exists in method parameters, DTOs, domain objects, and logging context. If required data is already encoded in an existing value, prefer removing redundant fields/log calls over adding derivation logic; when both are viable, present both options and trade-offs.
+- **SRP:** Keep one reason to change per class/component where practical; separate validation, transport/API, persistence, and orchestration when they evolve independently.
+- **OCP with Java idioms:** Prefer extending behavior via small interfaces, composition, and strategy/factory maps over repeatedly growing central string/type `switch` blocks. Add new variants with focused implementations when feasible.
+- **Avoid over-caching:** Cache only with clear keys, TTL/size bounds, and invalidation or refresh strategy. Do not add layers of cache “just in case.”
+- **Avoid busy-wait and pointless loops:** Do not use tight loops, `Thread.sleep` in loops, or polling when events, callbacks, timeouts, or proper blocking APIs exist. Prefer bounded waits with timeouts where polling is unavoidable.
+- **Network and database reads:** Prefer batching, projections, pagination, and single round-trips over repeated calls. Eliminate N+1 patterns; combine reads where the API allows.
+- **Mediation / adapter traffic:** Use **narrow filters** ( subtree, xpath, subtree-filter, or equivalent ) so devices and controllers return only what is needed; avoid full-tree pulls when a filtered get suffices.
+- **Large payloads and memory:** Stream or chunk when possible; do not load entire responses or files into memory when sending over the network. Release references promptly after use.
+- **Reuse:** Prefer existing utilities and shared helpers in the codebase before duplicating logic—especially **`mdm-core-common`** (`com.nokia.nsp.mvm.core.common.*`) alongside **`mdm-core-sbi`** / **`mdm-core-adapter`**. Extract reusable methods only when duplication is real and stable (DRY), not speculative (YAGNI).
+- **New dependency injection:** When introducing new collaborators (constructors, `@Autowired`, factory wiring), add or extend **unit tests** that cover required cases (null/empty, success, and error paths where behavior matters).
+
+Guidance in sections below is aligned with common Java review practice (clean code, concurrency, patterns); see also [cursor.directory/rules/java](https://cursor.directory/rules/java).
+
 ## 1. Code Style & Structure
 
 - Write clean, efficient, and well-documented Java code. Use Spring Boot best practices and conventions when the project uses Spring Boot.
 - Use descriptive method and variable names following **camelCase**. Use **PascalCase** for class names (e.g. `UserController`, `OrderService`). Use **ALL_CAPS** for constants (e.g. `MAX_RETRY_ATTEMPTS`, `DEFAULT_PAGE_SIZE`).
 - Structure applications: controllers, services, repositories, models, configurations. Follow RESTful API design when creating web services.
 - Use Java 17 or later features when applicable (e.g. records, sealed classes, pattern matching).
+- **Clean code (concise):** DRY for real duplication; **KISS** — simplest correct solution; **YAGNI** — no speculative APIs. Small methods, single level of abstraction, guard clauses over deep nesting. Comments explain **why**, not what. Meaningful names; avoid magic numbers (named constants).
 
 ## 2. Logging (SLF4J)
 
@@ -33,6 +115,7 @@ You are an expert in Java programming, Spring Boot, Maven, JUnit, and related Ja
 - Use Spring Boot auto-configuration effectively. Implement exception handling with `@ControllerAdvice` and `@ExceptionHandler`.
 - Use **constructor injection** over field injection for testability. Use Spring Data JPA for database operations when applicable.
 - Use Bean Validation (e.g. `@Valid`, custom validators) for input validation.
+- **`@Async`:** Enable with `@EnableAsync`; methods must be **public** and invoked through a **separate bean** (not self-invocation). Configure a **bounded** `TaskExecutor` (not unbounded `SimpleAsyncTaskExecutor` for heavy load). Propagate security context when using `SecurityContextHolder` (e.g. delegating executor).
 
 ## 4. Configuration & Properties
 
@@ -44,21 +127,91 @@ You are an expert in Java programming, Spring Boot, Maven, JUnit, and related Ja
 - Write unit tests with **JUnit 5** and Spring Boot Test. Use **MockMvc** for web layer tests.
 - Use `@SpringBootTest` for integration tests. Use `@DataJpaTest` for repository layer tests when using Spring Data JPA.
 - Prefer constructor injection and interfaces to simplify mocking.
+- Cover null/empty inputs, boundaries, and exception paths where behavior is specified. For concurrent code, consider load-sensitive scenarios where feasible.
 
 ## 6. Exception Handling
 
 - Implement consistent exception handling (e.g. `@ControllerAdvice`, `@ExceptionHandler`). Use appropriate HTTP status codes and error response bodies for APIs.
-- Do not swallow exceptions; log and rethrow or translate as appropriate.
+- Do not swallow exceptions; log and rethrow or translate as appropriate. Log with **context and full cause** (`log.error("...", e)`). Avoid broad `catch (Exception)` unless justified and narrowed inside.
 
-## 7. Performance & Scalability
+## 7. Performance, Collections & Scalability
 
-- Use Spring Cache abstraction for caching when appropriate. Use `@Async` for non-blocking operations where it fits the design.
+- Use Spring Cache **only** where benefits outweigh complexity (see §0). Use `@Async` for non-blocking operations where it fits the design.
 - Implement proper database indexing and query optimization. Avoid N+1 queries when using JPA.
+- **Collections / streams:** No structural modification while iterating ordinary collections; use `removeIf` or copy-then-modify. Prefer simple loops for side effects; streams for transformations. Know mutability of collected lists (`toList()` vs `toCollection(ArrayList::new)`).
+- **Hot paths:** Avoid string `+=` in loops; pre-compile regex; avoid creating throwaway objects in tight loops when reusable.
 
 ## 8. Security
 
 - Use **Spring Security** for authentication and authorization when the application exposes protected resources.
 - Use proper password encoding (e.g. BCrypt). Configure CORS when the API is consumed by browsers.
+
+### 8.1 Insecure Deserialization in Message Consumers (Kafka / JMS / AMQP)
+
+**Rule:** Any class that reads a message payload and passes it to `ObjectInputStream.readObject()` **must** install a class allow-list filter before `readObject()` is called. This applies to every consumer of Kafka, JMS, AMQP, or any other broker where payload bytes originate from an external producer.
+
+#### Why a cast is not a fix
+
+```java
+// UNSAFE — cast does NOT prevent gadget-chain execution
+SnmpPDU pdu = (SnmpPDU) new ObjectInputStream(in).readObject();
+```
+
+`readObject()` fully deserializes the entire object graph — invoking every `readObject()` / `readResolve()` override on every class in the stream — **before** the cast is evaluated. A ysoserial-style payload (e.g. CommonsCollections `ChainedTransformer`) executes `Runtime.exec()` inside `readObject()`; the `ClassCastException` is thrown only after the damage is done. A broad `catch (Throwable)` then silently swallows the exception, leaving no alert.
+
+#### Why a root-only `resolveClass` check is not a fix
+
+```java
+// STILL UNSAFE — only the first class is checked; all inner classes are unrestricted
+@Override
+protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+    if (firstResolve) {
+        firstResolve = false;
+        if (!SnmpPDU.class.getName().equals(name)) throw new InvalidClassException(...);
+    }
+    return super.resolveClass(desc);  // ← gadget classes (HashSet, LazyMap, …) pass through here
+}
+```
+
+An attacker wraps the gadget chain inside a **legitimate root class** that has `Object`- or `Serializable`-typed fields (e.g. `SnmpPDU.variableBindings` is a `Vector`). The outer class passes the root check; every inner gadget class is resolved without restriction.
+
+#### Correct pattern: full allow-list on every class
+
+```java
+private static final Set<String> SNMP_PDU_ALLOWED = Set.of(
+    "com.adventnet.snmp.beans.SnmpPDU",
+    "com.adventnet.snmp.snmp2.SnmpVar",
+    "com.adventnet.snmp.snmp2.SnmpOID",
+    "com.adventnet.snmp.snmp2.SnmpIpAddress",
+    "java.util.Vector",
+    "java.lang.Integer",
+    "java.lang.Long",
+    "java.lang.String",
+    "[B"   // byte[]
+);
+
+private static final class SnmpPduObjectInputStream extends ObjectInputStream {
+    private SnmpPduObjectInputStream(InputStream in) throws IOException { super(in); }
+
+    @Override
+    protected Class<?> resolveClass(ObjectStreamClass desc)
+            throws IOException, ClassNotFoundException {
+        if (!SNMP_PDU_ALLOWED.contains(desc.getName())) {
+            throw new InvalidClassException(desc.getName(),
+                "Class not in SnmpPDU deserialization allow-list");
+        }
+        return super.resolveClass(desc);
+    }
+}
+```
+
+Alternatively, use `ObjectInputFilter` (Java 9+) set via `ois.setObjectInputFilter(filter)` with a `!*` deny-all default — the filter is evaluated before any class is instantiated, so gadget constructors never run.
+
+**Applied rules:**
+- Maintain a **per-message-type** allow-list covering the root class and every transitive field type actually needed — nothing more.
+- Log `InvalidClassException` at **WARN** with the rejected class name (aids intrusion detection); do not swallow it in a broad `catch (Throwable)`.
+- When adding a new Kafka/JMS producer: document the exact class hierarchy being serialized and ensure the corresponding consumer's allow-list is updated in the same commit.
+- Prefer **non-Java serialization formats** (Protocol Buffers, Avro, JSON with schema validation) for new message channels; use `ObjectInputStream` only when the wire format is already established and cannot be changed.
 
 ## 9. API Documentation & Data Access
 
@@ -70,12 +223,100 @@ You are an expert in Java programming, Spring Boot, Maven, JUnit, and related Ja
 - Use **Maven** (or Gradle) for dependency management and builds. Use profiles for different environments (dev, test, prod).
 - Use Docker for containerization when the project deploys to containers.
 
-## 11. General Principles
+## 11. General Principles & API Shape
 
 - Follow **SOLID** principles; maintain high cohesion and low coupling.
 - Prefer RESTful design (correct HTTP methods, status codes). Consider microservices patterns when the system is split into services.
 - Use asynchronous processing (`@Async`) or reactive (e.g. WebFlux) when non-blocking behavior is required.
+- **Null safety:** Validate or use `Optional` on nullable chains; return empty collections instead of null where appropriate; `Objects.requireNonNull` for required parameters.
+- **API design:** Prefer enums or small types over boolean parameter pairs; `Optional` for “not found” returns where idiomatic; validate public inputs.
+- **Resources:** try-with-resources for `Closeable`/`AutoCloseable`; close DB resources promptly.
 
-## 12. Reference
+## 12. Concurrency (essentials)
+
+- **Shared state:** Prefer immutability; use `java.util.concurrent` types (`ConcurrentHashMap`, `BlockingQueue`, etc.) for shared structures. Avoid check-then-act; use `computeIfAbsent`, `putIfAbsent`, atomics.
+- **Visibility:** Use `volatile` or proper synchronization for flags observed across threads; document thread-safety of shared classes.
+- **Locks:** Consistent lock ordering to avoid deadlock; `Lock.unlock()` in `finally`. Avoid calling unknown/external code while holding a lock.
+- **`CompletableFuture`:** Handle failures (`exceptionally`, `handle`, `whenComplete`); use `orTimeout` / `completeOnTimeout` where appropriate; use a dedicated executor for blocking I/O, not only `ForkJoinPool.commonPool()`.
+- **Virtual threads (Java 21+):** Suitable for **I/O-bound** concurrency; not a substitute for CPU-bound parallel work. Be aware of pinning with `synchronized` + blocking I/O on older JDKs; prefer `ReentrantLock` for long blocking sections when relevant.
+- **ThreadLocal:** Prefer **ScopedValue** (when available and appropriate) for context with virtual threads.
+
+## 13. Design Patterns (pragmatic)
+
+- Use patterns to solve **recurring** problems, not for every class: **Builder** for many optional fields; **Factory** when creation policy varies; **Strategy** for swappable algorithms; **Template Method** for shared algorithm skeletons; **Decorator** for layered behavior; **Adapter** for legacy/third-party boundaries; **Observer** / Spring events for decoupled reactions.
+- Prefer **Spring-managed** beans and DI over hand-rolled singletons. Avoid singleton abuse and deep decorator chains without clear benefit.
+
+## 15. Config Reading, Multi-Repo Builds & HOCON
+
+### Config reading pattern (Typesafe Config / HOCON)
+
+Read config values directly from the already-resolved `Config` object using **`hasPath` + `getString`** (or `getBoolean`). Do **not** create a dedicated resolver class unless the same logic is needed in three or more independent callers. Keep it as a **private method** in the class that owns the decision:
+
+```java
+private SomeEnum resolveFromConfig(Config section)
+{
+    if (section.hasPath("some.key"))
+    {
+        try { return SomeEnum.valueOf(section.getString("some.key").trim().toUpperCase()); }
+        catch (IllegalArgumentException ex) { log.warn("invalid some.key='{}'; defaulting to {}", section.getString("some.key"), SomeEnum.DEFAULT); }
+    }
+    return SomeEnum.DEFAULT;
+}
+```
+
+- Always guard with `hasPath` before reading; default to a safe value on missing or invalid input.
+- Log **WARN** for invalid values, **INFO** when defaulting due to absence.
+- Read from the appropriate config sub-block that the component already holds — avoid re-parsing or passing raw strings.
+
+### Logger definition — per-subcategory style
+
+Where a class already uses multiple dot-suffix loggers, follow that same convention for new ones:
+
+```java
+private static final org.slf4j.Logger myFeatureLogger =
+        org.slf4j.LoggerFactory.getLogger(MyClass.class.getName() + ".myFeature");
+```
+
+Only add a new logger constant when the log category meaningfully differs from existing ones in the class.
+
+### HOCON inline syntax — key separation
+
+Multiple keys inside a `{ }` block **must** be separated by a **newline** or a **comma**. A bare space between two `key = value` pairs causes `ConfigException.Parse`. Apply this in tests and `.conf` files:
+
+```java
+// correct
+ConfigFactory.parseString("section { keyA = foo, keyB = bar }");
+// wrong — parse error at runtime
+ConfigFactory.parseString("section { keyA = foo keyB = bar }");
+```
+
+### SNAPSHOT dependencies when multiple repos are involved
+
+When repo A adds a new API (class, method, enum) that repo B must compile against, and the released artifact of A does not yet include that API, **pin a SNAPSHOT** in repo B's `gradle.properties`:
+
+```properties
+# gradle.properties — remove once coordinated release is published
+libFooVersion=1.2.0-SNAPSHOT   # needs API added in feature branch of lib-foo
+```
+
+```groovy
+// build.gradle
+implementation "com.example:lib-foo:${libFooVersion}"
+```
+
+- Use a **named property** (not an inline version string) so it is easy to find and promote later.
+- Add a comment stating which API the SNAPSHOT provides and when it can be reverted to a release.
+
+### Builds — use the `build-java-repo` skill
+
+For all Gradle builds, read and follow the **`build-java-repo`** skill. Core rules:
+
+- Run **`gradle7 clean build`** (or `gradle7` when `defaultTasks` already covers it) via `bash.exe -lc "source ~/set-j17-version.sh && cd <repo-path> && gradle7 clean build"`.
+- After changes to production or test code, regenerate `history.diff` from the correct `merge-base` and run `gradle7 deltaCoverage`.
+- Never commit `history.diff`.
+- Work on a properly named **feature branch** before editing files.
+
+## 14. Reference
 
 - Additional guidance aligned with [cursor.directory/rules/java](https://cursor.directory/rules/java) (Spring Boot, Quarkus, Jakarta EE, MicroProfile). Use framework-specific rules (e.g. Quarkus, Vert.x) only when the project uses those stacks.
+- External skill distillates (concurrency, clean code, Java review, patterns): [concurrency-review](https://github.com/decebals/claude-code-java/blob/main/.claude/skills/concurrency-review/SKILL.md), [clean-code](https://github.com/decebals/claude-code-java/blob/main/.claude/skills/clean-code/SKILL.md), [java-code-review](https://github.com/decebals/claude-code-java/blob/main/.claude/skills/java-code-review/SKILL.md), [design-patterns](https://github.com/decebals/claude-code-java/blob/main/.claude/skills/design-patterns/SKILL.md).

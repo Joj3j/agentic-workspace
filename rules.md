@@ -22,6 +22,9 @@ Use this file as a human-readable reference across all Go/communicator projects 
 - **Concurrency:** Protect shared state with `sync.Mutex`/`sync.RWMutex`; avoid global mutable state where possible.
 - **gRPC errors:** Use `google.golang.org/grpc/status` and `codes`; `status.FromError(err)` and `st.Code()` for retry decisions.
 - **Tests:** Prefer table-driven tests; `*_test.go` next to source; mock external clients where appropriate.
+- **Nil discipline:** Add nil checks only where a value can actually be nil at that point — trace the call chain first. Do not
+  add defensive nil guards on constructor-guaranteed fields or on parameters that are always set by the sole caller. See
+  `go-code-rules.mdc §3b` for the full nil/zero-value discipline rules and dead-code patterns to eliminate.
 
 ---
 

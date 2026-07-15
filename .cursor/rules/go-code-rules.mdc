@@ -9,6 +9,8 @@ globs: ["**/*.go"]
 
 You are an expert Go (Golang) developer. Always adhere to these idiomatic patterns:
 
+These rules incorporate recurring **workspace** concerns (multi-service gRPC, registries, brokers, actor-style workers, subscription/backpressure patterns from design reviews) and portable guidance from community references linked in **Reference**. They complement `workspace-wide.mdc` (gRPC dial/reconnect, layout, Kustomize) — avoid duplicating that content here.
+
 ## 1. Code Style & Formatting
 - Always format code with `go fmt` and manage imports with `goimports`.
 - **Import grouping**: Group stdlib, then third-party, then repo module and shared libs.
@@ -29,12 +31,78 @@ You are an expert Go (Golang) developer. Always adhere to these idiomatic patter
 - Propagate `context.Context` as the first argument in all functions involving network, DB, or long-running tasks.
 - **HTTP/REST APIs** (when building HTTP services): Use the standard library `net/http` and the **ServeMux** introduced in Go 1.22 for routing. Handle HTTP methods (GET, POST, PUT, DELETE) with appropriate handler signatures (`func(w http.ResponseWriter, r *http.Request)`). Use wildcard/regex route features where needed. Return appropriate status codes and format JSON responses correctly. Implement middleware for cross-cutting concerns (logging, auth). Consider rate limiting and authz on external-facing endpoints.
 - **API/feature workflow:** Follow requirements carefully. For new APIs or features, think step-by-step: describe plan (structure, endpoints, data flow) in pseudocode or outline; confirm the plan, then write code. Leave no todos or placeholders in the implementation. Be concise; add brief comments for complex or idiomatic logic. If unsure about a best practice, say so instead of guessing. Suggest how to test endpoints (e.g. `go test`, table-driven cases).
+- **Mutations & interconnects:** For RPCs or handlers that trigger downstream work (gRPC, HTTP, brokers), prefer **clear idempotency or deduplication** where retries are possible; document what a safe retry looks like. Avoid silent duplicate side effects across layers.
+
+### 3a. Design principles (clean code & SOLID, language-agnostic)
+
+Distilled from common review practice (see also [clean-code / solid-principles patterns](https://github.com/decebals/claude-code-java/tree/main/.claude/skills)) — apply with Go idioms (`interface`, composition, small packages):
+
+- **DRY / KISS / YAGNI:** Single source of truth for validation and policy; simplest fix first; do not build abstractions or configuration branches until a second real use case exists. Incidental similarity is not always duplication — do not merge concepts that will evolve on different axes.
+  - **Check existing context before deriving:** Before adding a new helper, extraction function, or computed field, audit what data is already present in the call chain (existing log fields, struct members, context values). If the needed information is already available in a different form (e.g. `SessionId` already encodes `policy@ip:port`), prefer removing the redundant field or log call over adding extraction logic. When both paths are viable, **propose both options** (remove-the-field vs add-the-extractor) and let the user decide.
+- **SRP:** One type or package should have one reason to change; split validation, transport, persistence, and orchestration when they churn independently.
+- **OCP / strategy in Go:** Prefer small interfaces and registration tables over growing `switch` on string/type for every new variant; add new behavior with new types, not edits to a central god `switch` when feasible.
+- **LSP & contracts:** Implementations of an interface must honor documented semantics (timeouts, error mapping, nil behavior). Subtypes that weaken guarantees (e.g. ignoring cancel, swallowing errors) break substitutability.
+- **ISP:** Prefer several small interfaces over one “kitchen sink” interface that forces no-op or panic methods on implementers.
+- **DIP:** High-level packages depend on narrow interfaces defined locally or in `internal/domain`; wire concretions in `main` / `internal/app`. Avoid `new(ConcreteClient)` inside business logic.
+- **Functions:** Short functions, single level of abstraction, guard clauses to reduce nesting, **parameter structs** when arity grows; avoid boolean flags that flip major behavior — use two methods or typed options.
+- **Naming & comments:** Names encode intent (`isReady`, `fetchDevice`); comments explain **why** (incidents, invariants, ordering), not what the next line obviously does.
+
+### 3b. Nil / zero-value discipline
+
+Before adding any nil guard, trace the **actual call chain** in the current codebase. Add a nil check only when the value can be nil at that point at runtime; remove checks that are statically unreachable.
+
+**Rules:**
+
+- **Nil check only when nil is possible.** If a parameter is always set by the single caller (e.g. `logger` from `main()` via `logging.NewLoggerEnv()`), do not add a nil guard or a fallback default inside the callee. Adding one implies nil is a valid state when it is not.
+
+- **No nil guards on fields guaranteed by the constructor.** If a struct field is always set inside `NewFoo(...)` before the struct is returned, do not guard against nil inside methods on that struct (e.g. `Shutdown()` nil-checking fields it always assigns). Such guards are dead code and mislead readers about the invariant.
+
+- **No fallback default when the caller is responsible.** Replacing a missing required dependency with a silent default (e.g. `if rt == nil { rt = upstream.NewMockRouter(log) }` inside `NewServer`) hides misconfiguration. If callers must provide the dependency, omit the fallback; let it panic or return an error so the problem is visible.
+
+- **Constructors as the authority on required vs optional.** Required deps go in constructor parameters; optional deps use the options-struct pattern with documented defaults. Do not mix styles within one constructor.
+
+**Eliminate dead-code patterns:**
+
+| Pattern | Replace with |
+|---------|-------------|
+| `var x = noopFunc(); x, err = f(); defer x()` | `x, err := f(); defer x()` (Fatalf/return exits before defer runs if err != nil) |
+| `shutdownCtx, cancel := ...; defer cancel(); _ = shutdownCtx` | Remove or wire `shutdownCtx` into actual use |
+| `_ = ctx` inside a function body | Remove the parameter if unused, or use it |
+| `if m.Field != nil { m.Field(...) }` where `Field` is always set | Remove guard; callers ensure the invariant |
+| Callback field (`Log func(...)`) injected post-construction | Replace with `*zerolog.Logger` in the struct, injected via constructor |
+
+### 3c. Package-wide function and type names
+
+- **One namespace per package:** All `.go` files in the same directory share a single scope for top-level `func`, `type`, `const`, and `var`. The same identifier **cannot** be declared twice (e.g. after a split into `runners.go` and another file) — that is a compile error (“redeclared in this block”). When moving code to a new file, **move or rename**; never leave a duplicate definition.
+- **Treat case-only variants as non-distinct for naming policy:** Go allows `RunFoo` (exported) and `runFoo` (unexported) to coexist, but **do not** use that as the only difference between two top-level functions that represent overlapping flows. Prefer **distinct name stems** (e.g. `RunAsyncBulkHierarchyLoop` vs `runBulkMenuDriver`) so reviews, grep, and refactors do not conflate “the same words, different capital letter” with two unrelated entrypoints. Same rule for types: avoid `Widget` vs `widget` as paired public/private names unless the distinction is obvious and documented.
 
 ## 4. Concurrency & Performance
 - Use goroutines only when necessary. Ensure every goroutine has a clear lifecycle and termination plan. Implement **goroutine cancellation** via context propagation to avoid leaks and deadlocks.
 - Guard shared state with `sync.Mutex` or `sync.RWMutex` (use `RWMutex` when reads dominate); or use channels. Use `sync/atomic` for simple counters.
 - Use `defer` to clean up resources (files, DB connections, locks) immediately after successful initialization.
-- **Performance:** Use benchmarks to track regressions; minimize allocations; profile before tuning. Instrument hot paths (DB, external calls) where observability is needed.
+- **Performance:** Use benchmarks to track regressions; minimize allocations; **profile before tuning** (`go test -bench`, `pprof`, `benchstat` for comparisons). Instrument hot paths (DB, external calls) where observability is needed. When changing concurrency or allocation behavior, state a falsifiable hypothesis and validate with data — align with the workspace **perf-rca** skill for timeout/latency investigations (evidence before defaulting to “raise timeouts”).
+- **Teach reasoning, not only rules:** Prefer recommendations that say what breaks without them (e.g. unbounded queue → OOM; missing `Done()` on receive → goroutine leak). Where a tool confirms the issue (`go test -race`, `go vet`, allocation profiles), use it before large refactors.
+- **Security-relevant randomness:** Use `crypto/rand` for tokens, session IDs, and cryptographic operations; never `math/rand` for security-sensitive values.
+
+### 4a. Hot-path optimization patterns
+
+Lessons from production profiling of gRPC service handlers (config writes, bulk dispatchers).
+Apply these **in initial design** of request-processing code — retrofitting is expensive.
+
+| Pattern | Why it matters | Do | Don't |
+|---------|----------------|----|----|
+| **Structured logging over format-verbs** | `Msgf("%+v", proto)` calls `proto.String()` + `fmt.Sprintf` on every RPC even if level is disabled | `logger.Debug().Str("neId", req.NeId).Msg("called")` | `logger.Debug().Msgf("called with: %+v", req)` |
+| **Builder-based string assembly** | `fmt.Sprintf` parses the format string every call; allocates | `sb.WriteByte('['); sb.WriteString(key); sb.WriteByte('='); sb.WriteString(val); sb.WriteByte(']')` | `fmt.Sprintf("[%s=%s]", key, val)` inside a loop |
+| **Manual JSON for fixed schemas** | `json.Marshal` uses reflection; expensive per-ticket | `strconv.Quote` + `strings.Builder` for small known-shape structs on hot path | `json.Marshal(entry)` when the struct shape never changes at runtime |
+| **Map-based correlation over index** | Protocol contracts rarely guarantee response ordering | Match by explicit ID/key (e.g. `group_id`) | Assume `responses[i]` corresponds to `requests[i]` unless the spec says so |
+| **Pre-size slices and maps** | Avoids repeated grow+copy | `make([]T, 0, knownLen)` / `make(map[K]V, expectedN)` | Bare `var s []T` when the capacity is known from input |
+| **Avoid `string([]byte)` copies in loops** | Each conversion allocates a new string | Keep as `[]byte` / `json.RawMessage` through the pipeline when downstream accepts bytes | `string(raw)` inside a loop when only the final consumer needs a string |
+
+**When NOT to optimize early:**
+- Do not pool or cache until profiling (`pprof`, `benchstat`) confirms the allocation is hot.
+- Do not replace `encoding/json` wholesale — only for fixed-schema structs on measured hot paths.
+- Do not sacrifice readability for marginal gains outside inner loops; the savings must be
+  demonstrated with `go test -bench -benchmem`.
 
 ## 5. Testing
 - Create a `_test.go` file for every package.
@@ -53,6 +121,29 @@ You are an expert Go (Golang) developer. Always adhere to these idiomatic patter
 - **Project layout:** Use `cmd/` for entrypoints, `internal/` (or `internal/app/`) for core logic, `pkg/` for shared packages, and `configs/` for configuration (workspace uses `configs/main/`). Group by feature when it improves clarity.
 - **Domain-driven design:** Apply where applicable; favor clear boundaries and dependency inversion.
 
+### 6a. Distributed interconnects (gRPC, HTTP, brokers, etcd)
+
+Recurring themes from NSP-style services (control plane + workers + registries):
+
+- **Timeouts everywhere:** Every outbound call (gRPC, HTTP, AMQP publish/consume handshakes, etcd) should use a **bounded** `context.WithTimeout` or deadline propagated from the caller. Avoid “naked” RPCs with only the parent context if it can live forever.
+- **Cancellation propagation:** Respect `ctx.Done()`; do not spawn work that ignores cancel when the request or session ended. Long-lived streams should exit cleanly and release subscriptions/consumers.
+- **Fan-out & routing:** When dispatching by key (e.g. `neId` → worker), keep routing logic close to the registry/dispatcher contract; avoid ad hoc peer selection scattered in handlers. Prefer **stable ownership** (one writer per key) over conflicting updates from multiple writers.
+- **Backpressure:** Unbounded in-memory buffers between services are a liability. Prefer bounded channels/semaphores, **drop-oldest** or shed load policies only when product requirements allow — and never drop control or safety-critical signals without an explicit spec.
+- **Broker vs RPC:** Be explicit at boundaries: at-least-once delivery, acknowledgment rules, poison messages, and duplicate handling. Align retry semantics with idempotency on the consumer.
+- **Health vs readiness:** Liveness = process up; readiness = dependencies (DB, gRPC backends, etcd session) usable. Do not mark ready before subscriptions/registrations that the data path needs are valid.
+- **Cross-service review:** When reviewing a change, trace **callers and callees** outside the diff if behavior crosses packages or services — regressions often sit at the boundary.
+
+### 6b. Resource usage & lifecycle
+
+Optimize for predictable CPU, memory, file descriptors, and connection counts:
+
+- **Bodies & streams:** Always `Close()` response bodies on HTTP clients; drain or cancel streams you abandon. For gRPC streaming, document who closes and on which error classes.
+- **Connection reuse:** Prefer long-lived clients with reconnect logic (see workspace-wide gRPC client pattern) over per-request dial storms.
+- **Pools & limits:** Cap concurrent device/session operations where the NE or FD budget is finite; use `semaphore.Weighted` or similar when spawning goroutines per request.
+- **Caches:** Bound size (max entries / memory); define eviction and staleness; avoid unbounded maps keyed by high-cardinality IDs unless TTL and cap are explicit.
+- **Timers & `time.After`:** In tight loops, reuse timers or use `context` deadlines — `time.After` in hot paths allocates.
+- **Third-party libs:** See **§10 Third-Party Library Introduction** — verify thread-safety, connection pooling defaults, and shutdown (`Close`/`Stop`) on application exit.
+
 ## 7. Security & Resilience
 - **Input validation:** Validate and sanitize inputs rigorously, especially from external sources.
 - **External calls:** Use retries, exponential backoff, and timeouts on all external calls. Consider circuit breakers and rate limiting for service protection.
@@ -65,7 +156,7 @@ You are an expert Go (Golang) developer. Always adhere to these idiomatic patter
 
 ## 9. Documentation & Tooling
 - Document public functions and packages with **GoDoc-style** comments. Provide concise READMEs for services/libraries. Consider `CONTRIBUTING.md` and `ARCHITECTURE.md` to guide team practices.
-- Enforce formatting and linting: `go fmt`, `goimports`, and `golangci-lint` where adopted. Use Go modules; version-lock dependencies; run lint, test, and security checks in CI.
+- Enforce formatting and linting: `go fmt`, `goimports`, and `golangci-lint` where adopted. **When the repo provides `.golangci.yml`**, treat it as the source of truth for mechanical style and static checks; keep this rule file for architecture, concurrency, and cross-service judgment that linters do not encode. Use Go modules; version-lock dependencies; run lint, test, and security checks in CI.
 - **Key conventions:** (1) Prioritize readability, simplicity, and maintainability. (2) Design for change: isolate business logic, minimize framework lock-in. (3) Emphasize clear boundaries and dependency inversion. (4) Ensure behavior is observable, testable, and documented. (5) Automate testing, building, and deployment.
 
 ## 10. Third-Party Library Introduction
@@ -109,8 +200,34 @@ Use **zerolog** (`github.com/rs/zerolog`) for all logging. Prefer the shared log
 - **Levels**: Use `Trace()`, `Debug()`, `Info()`, `Warn()`, `Error()`, `Fatal()` as appropriate. Level is typically configured via `LOG_LEVEL` (trace, debug, info, warn, error).
 - **No sensitive data**: Never log passwords, secrets, or PII.
 - **Avoid**: `log/slog`, legacy `log` package, and `fmt.Printf` for application logging.
+- **Avoid redundant log fields:** Before adding a new field to a log line, check whether the information is already present in another field. Composite fields like `SessionId` (`policy@ip:port`) carry multiple dimensions; adding a separate `NeId` or `MgmtIP` field extracted from the same source is noise. When a field is consistently empty at a log site (check real log samples), prefer **removing the field** over adding fallback extraction. If the value would genuinely add filtering ability not covered by existing fields, propose both options to the user before implementing.
+
+## Build & CI pipeline
+
+### `.go-make` repos — use the `build-go-repo` skill
+
+If the repo root contains a `.go-make/` directory, it uses the shared Nokia CI pipeline.
+**Read and follow the `build-go-repo` skill** for all build, test, and delta-coverage work:
+
+```
+agentic-workspace/.cursor/skills/build-go-repo/SKILL.md
+```
+
+Key rules when working in a `.go-make` repo:
+- Run `make build` and `make test` (or focused `go test`) after any code change — no need to ask.
+- After changes that affect delta coverage, regenerate `history.diff` from the Jenkins
+  `[jenkins]` baseline (or merge-base) and run delta coverage via `docker run
+  build-unittest-coverage-delta:1` (podman on CI, docker locally).
+- Delta threshold is enforced per MR; add tests until it passes (max 4 retries before reporting).
+- **Never commit `history.diff`**.
+
+Detect with: `ls .go-make/go.mk 2>/dev/null && echo "uses .go-make pipeline"`
+
+---
 
 ## Reference (workspace)
 
 - For project layout, config paths, gRPC reconnect pattern, proto, and Kustomize, follow workspace-wide rules when available.
 - Additional Go guidance aligned with [cursor.directory/rules/go](https://cursor.directory/rules/go) and [cursor.directory/rules/golang](https://cursor.directory/rules/golang) (APIs, Clean Architecture, observability, security, tooling). Workspace keeps zerolog and gRPC conventions above.
+- **Community skill meta (optional depth):** [samber/cc-skills-golang `CLAUDE.md`](https://github.com/samber/cc-skills-golang/blob/main/CLAUDE.md) — performance vs benchmark vs troubleshooting vs observability split, diagnostics-first wording, and evaluation-style rigor for complex skills. Use as inspiration for **measurement** and **tooling** discipline, not as a duplicate of this file.
+- **Design pattern prompts (Java repo, portable ideas):** [decebals/claude-code-java `.claude/skills`](https://github.com/decebals/claude-code-java/tree/main/.claude/skills) — architecture-review, clean-code, solid-principles, concurrency-review, performance-smell-detection; map concepts to Go equivalents (interfaces, packages, goroutines).

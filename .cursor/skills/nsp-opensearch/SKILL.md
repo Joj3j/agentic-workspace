@@ -3,7 +3,7 @@ name: nsp-opensearch
 description: >-
   NSP OpenSearch log errors: REST Gateway client_credentials token and native HTTPS
   _search bodies for error rollups (Query A/B). Same NSP host for gateway and
-  OpenSearch (port 9200 by default). Self-contained in workspace-settings: skill,
+  OpenSearch (port 9200 by default). Self-contained in agentic-workspace: skill,
   opensearch_env.sh, and nsp_opensearch_log_report.py. Requires credentials or
   networkdata; no other repo dependency.
 ---
@@ -12,20 +12,20 @@ description: >-
 
 **Flow:** (1) **NSP IP / gateway host** — same host for REST Gateway and OpenSearch (see §1). (2) **Bearer token** from the gateway. (3) **POST** `_search` to **`{scheme}://<host>:<opensearch_port>`** (default port **9200**) with that token.
 
-**Canonical location:** This skill and its scripts live only under **`workspace-settings/.cursor/`** (skills + scripts). Treat that tree as the single source of truth.
+**Canonical location:** This skill and its scripts live only under **`agentic-workspace/.cursor/`** (skills + scripts). Treat that tree as the single source of truth.
 
-## Scripts and env (workspace-settings)
+## Scripts and env (agentic-workspace)
 
 | Artifact | Location |
 |----------|----------|
-| Env loader | `workspace-settings/.cursor/scripts/nsp-opensearch/opensearch_env.sh` |
-| Secrets template | `workspace-settings/.cursor/scripts/nsp-opensearch/opensearch_env.local.example` → copy to **`opensearch_env.local`** (gitignored) |
-| Log report | `workspace-settings/.cursor/scripts/nsp-opensearch/nsp_opensearch_log_report.py` |
+| Env loader | `agentic-workspace/.cursor/scripts/nsp-opensearch/opensearch_env.sh` |
+| Secrets template | `agentic-workspace/.cursor/scripts/nsp-opensearch/opensearch_env.local.example` → copy to **`opensearch_env.local`** (gitignored) |
+| Log report | `agentic-workspace/.cursor/scripts/nsp-opensearch/nsp_opensearch_log_report.py` |
 
 **Agent / user steps:**
 
 ```bash
-cd workspace-settings/.cursor/scripts/nsp-opensearch
+cd agentic-workspace/.cursor/scripts/nsp-opensearch
 cp opensearch_env.local.example opensearch_env.local
 # Edit opensearch_env.local: NSP_GATEWAY, NSP_USER, NSP_PASSWORD
 source opensearch_env.sh

@@ -16,7 +16,7 @@ Skill: `.cursor/skills/srl-config-load/SKILL.md`.
 See [`k8s-test-client/`](k8s-test-client/) for scripts. Skill: `.cursor/skills/k8s-test-client/SKILL.md`.
 
 ```bash
-cd workspace-settings/.cursor/scripts/k8s-test-client
+cd agentic-workspace/.cursor/scripts/k8s-test-client
 cp k8s_test_env.local.example k8s_test_env.local   # first time only
 # Edit k8s_test_env.local: jump host IP, SSH user/key
 source k8s_test_env.sh
@@ -32,7 +32,7 @@ bash k8s_run_test_client.sh --client comm-worker-gnmi
 See [`nsp-opensearch/`](nsp-opensearch/) for scripts. Skill: `.cursor/skills/nsp-opensearch/SKILL.md`.
 
 ```bash
-cd workspace-settings/.cursor/scripts/nsp-opensearch
+cd agentic-workspace/.cursor/scripts/nsp-opensearch
 cp opensearch_env.local.example opensearch_env.local   # first time only
 # Edit: NSP_GATEWAY, NSP_USER, NSP_PASSWORD (optional: NSP_OPENSEARCH_PORT, NSP_VERIFY_TLS=0)
 source opensearch_env.sh
@@ -44,10 +44,17 @@ python3 nsp_opensearch_log_report.py --index 'nsp-example-logs-2026.04.10' --jso
 
 ## Confluence: read / create pages
 
-See [`confluence/`](confluence/) for scripts. Skill: `.cursor/skills/confluence-page/SKILL.md`.
+See [`confluence/`](confluence/) for scripts.
+
+| Skill | Use for |
+|-------|---------|
+| `.cursor/skills/confluence-read/SKILL.md` | **Read-only** (summarize, fetch HTML/text by title or page ID) |
+| `.cursor/skills/confluence-page/SKILL.md` | **Read + create**; authoring rules; `confluence_create_page.py` |
+
+Both use the same `confluence_env.sh` / `confluence_env.local` in `confluence/`.
 
 ```bash
-cd workspace-settings/.cursor/scripts/confluence
+cd agentic-workspace/.cursor/scripts/confluence
 cp confluence_env.local.example confluence_env.local   # first time only
 # Edit confluence_env.local: CONFLUENCE_BASE_URL, CONFLUENCE_USERNAME, CONFLUENCE_API_TOKEN
 source confluence_env.sh

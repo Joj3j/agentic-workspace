@@ -1,0 +1,19 @@
+# Copy to restconf_env.local (gitignored) and set values.
+# Then: source restconf_env.sh
+
+# Required: NSP VIP host (no scheme, no trailing slash).
+# Examples: 100.127.198.155   or   nsp.example.com
+export NSP_GATEWAY=""
+
+# Required: client_credentials for POST .../rest-gateway/rest/api/v1/auth/token
+export NSP_USER="admin"
+export NSP_PASSWORD=""
+
+# RESTCONF API port on the same host as NSP_GATEWAY (default: 8545)
+export RESTCONF_PORT="${RESTCONF_PORT:-8545}"
+
+# https (default) or http
+export NSP_HTTPS_SCHEME="${NSP_HTTPS_SCHEME:-https}"
+
+# 1 = verify TLS (default). 0 = allow self-signed / corporate MITM (matches curl -k).
+export NSP_VERIFY_TLS="0"

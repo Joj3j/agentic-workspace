@@ -23,7 +23,7 @@ Produce an **evidence-based** cloud-native review of a Confluence page. **Only**
 
 Follow [confluence-page](../confluence-page/SKILL.md) for env setup:
 
-1. `cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh`
+1. `cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh`
 2. If sourcing fails, tell the user to configure `confluence_env.local` from the example.
 
 ## Step 1 — Fetch the page
@@ -38,7 +38,7 @@ Parse URL or use page ID (same rules as confluence-page skill):
 Run (default text is usually enough for review):
 
 ```bash
-cd <workspace-settings>/.cursor/scripts && source confluence_env.sh
+cd agentic-workspace/.cursor/scripts && source confluence_env.sh
 python3 confluence_read_page.py --page-id <ID> --format text
 # or
 python3 confluence_read_page.py --title "..." --space-key NSPArchEvo --format text

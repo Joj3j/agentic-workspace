@@ -2,7 +2,7 @@
 # Source K8s test-client env for k8s_run_test_client.sh
 #
 # Usage:
-#   cd workspace-settings/.cursor/scripts && source k8s_test_env.sh
+#   cd agentic-workspace/.cursor/scripts && source k8s_test_env.sh
 #
 # First time:
 #   cp k8s_test_env.local.example k8s_test_env.local
@@ -27,6 +27,11 @@ if [[ -z "$K8S_NODE_IP" ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
+# Repos are siblings of agentic-workspace under the Go workspace root.
+# SCRIPT_DIR = .../agentic-workspace/.cursor/scripts/k8s-test-client
+# So ../../../../ = /home/joji/Go (or equivalent workspace root)
+export WORKSPACE_ROOT="${WORKSPACE_ROOT:-$(cd "${SCRIPT_DIR}/../../../.." && pwd)}"
+
 export K8S_NODE_IP
 export K8S_SSH_USER="${K8S_SSH_USER:-root}"
 export K8S_SSH_KEY="${K8S_SSH_KEY:-}"
@@ -34,6 +39,7 @@ export K8S_SSH_OPTS="${K8S_SSH_OPTS:-}"
 export CLS_FWD_PORT="${CLS_FWD_PORT:-40055}"
 export DR_FWD_PORT="${DR_FWD_PORT:-40058}"
 export GNMI_FWD_PORT="${GNMI_FWD_PORT:-40051}"
+export SUB_FWD_PORT="${SUB_FWD_PORT:-40056}"
 
 # Ensure jump host bypasses any HTTP proxy (gRPC honours HTTP_PROXY)
 if [[ -n "${HTTP_PROXY:-}${HTTPS_PROXY:-}${http_proxy:-}${https_proxy:-}" ]]; then
@@ -44,4 +50,4 @@ if [[ -n "${HTTP_PROXY:-}${HTTPS_PROXY:-}${http_proxy:-}${https_proxy:-}" ]]; th
   esac
 fi
 
-echo "K8s test env loaded (jump=$K8S_NODE_IP, ssh_user=$K8S_SSH_USER, cls=:$CLS_FWD_PORT, dr=:$DR_FWD_PORT, gnmi=:$GNMI_FWD_PORT)"
+echo "K8s test env loaded (jump=$K8S_NODE_IP, ssh_user=$K8S_SSH_USER, cls=:$CLS_FWD_PORT, dr=:$DR_FWD_PORT, gnmi=:$GNMI_FWD_PORT, sub=:$SUB_FWD_PORT)"

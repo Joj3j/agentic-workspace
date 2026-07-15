@@ -13,7 +13,7 @@ sudo apt-get install -y sshpass
 ## Set env (once)
 
 ```bash
-cd workspace-settings/.cursor/scripts/srl-config-load
+cd agentic-workspace/.cursor/scripts/srl-config-load
 cp srl_config_env.local.example srl_config_env.local
 # Edit srl_config_env.local: SRL_USER, SRL_PASSWORD, SRL_SOURCE_VER, SRL_TARGET_VER
 source srl_config_env.sh
@@ -22,8 +22,8 @@ source srl_config_env.sh
 ## 1 — Check for an existing template first
 
 ```bash
-ls /home/joji/Go/workspace-settings/tools/srl-configs/
-cat /home/joji/Go/workspace-settings/tools/srl-configs/<stem>.meta.json
+ls /home/joji/Go/agentic-workspace/tools/srl-configs/
+cat /home/joji/Go/agentic-workspace/tools/srl-configs/<stem>.meta.json
 ```
 
 If a matching template exists for the target NE type, skip to step 3.
@@ -38,7 +38,7 @@ python3 srl_load_config.py \
     --ne-type 7250-IXR-SRL \
     --source-ne-ip <SOURCE_NE_IP> \
     --source-ver 25.10 --target-ver 25.10 \
-    --save-template /home/joji/Go/workspace-settings/tools/srl-configs \
+    --save-template /home/joji/Go/agentic-workspace/tools/srl-configs \
     --dry-run
 ```
 
@@ -56,7 +56,7 @@ python3 srl_load_config.py \
 
 ```bash
 python3 srl_load_config.py \
-    --config /home/joji/Go/workspace-settings/tools/srl-configs/<stem>_v2510_to_2510_fixed.cfg \
+    --config /home/joji/Go/agentic-workspace/tools/srl-configs/<stem>_v2510_to_2510_fixed.cfg \
     --ne-ip <OTHER_NE_IP> \
     --ne-id <OTHER_NE_ID> \
     --ne-type 7250-IXR-SRL \

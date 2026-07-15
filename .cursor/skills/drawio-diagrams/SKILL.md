@@ -1,7 +1,6 @@
 ---
-description: Draw.io guide — layout (horizontal vs vertical vs hybrid), flow clarity, edge/label non-overlap, swimlanes; "sequential diagram" = UML sequence (lifelines + messages); versioning
-globs: ["**/*.drawio", "**/*.drawio.svg", "**/docs/**/diagrams/**"]
-alwaysApply: false
+name: drawio-diagrams
+description: Draw.io diagram authoring guide — layout (horizontal vs vertical vs hybrid), flow clarity, edge/label non-overlap, swimlanes, UML sequence diagrams ("sequential diagram" = lifelines + messages), colors/styles, and version workflow. Use when creating or editing .drawio / .drawio.svg files, files under docs/**/diagrams/**, architecture or sequence/data-flow diagrams, or when the user asks to draw, lay out, or restyle a draw.io diagram.
 ---
 
 # Draw.io Diagram Drawing Guide
@@ -62,10 +61,10 @@ Pick the primary reading direction from what the diagram is **about**—not a si
 When a doc or request says **sequential diagram**, **sequence flow**, or **sequential flow** (in the sense of *who talks to whom over time*), use a **UML sequence diagram** — **not** a horizontal pipeline of numbered rounded rectangles.
 
 - **Use:** [Sequence diagram (UML)](#sequence-diagram-uml) — lifelines (`shape=umlLifeline`), time **top → bottom**, `elbowEdgeStyle` messages, self-calls with curved loops, dashed edges for returns/async streams where appropriate.
-- **Reference examples:** `newarch/apps/int/nsp-device/device-registry/docs/diagrams/device_registry_data_flow_v1.drawio`, `comm-layer-server/docs/diagrams/comm_layer_server_async_ticket_lifecycle_sequential_v1.drawio` (sibling repo).
+- **Reference examples:** `newarch/apps/int/nsp-device/device-registry/docs/diagrams/device_registry_data_flow_v1.drawio`, `comm-layer-server/docs/design/diagrams/comm_layer_server_async_ticket_lifecycle_sequential_v1.drawio` (sibling repo).
 - **Naming:** Filenames may include `sequential` or `sequence` (e.g. `*_sequential_v1.drawio`, `*_direct_grpc_sequence_v1.drawio`); content must still follow the UML sequence pattern above.
 
-**Example (hybrid TB + LR):** `comm-layer-server/docs/diagrams/comm_layer_server_async_config_nbi_sbi_v1.drawio` — swimlanes stacked **top → bottom** (NBI / CLS / SBI), peers **left → right** inside SBI, **comm-operator** routing inside CLS, **solid** config path vs **dashed** deployment notifications on **separate** `exitX` from Data Deployer, **FIFO** policy in a dashed note + edge labels.
+**Example (hybrid TB + LR):** `comm-layer-server/docs/design/diagrams/comm_layer_server_async_config_nbi_sbi_v1.drawio` — swimlanes stacked **top → bottom** (NBI / CLS / SBI), peers **left → right** inside SBI, **comm-operator** routing inside CLS, **solid** config path vs **dashed** deployment notifications on **separate** `exitX` from Data Deployer, **FIFO** policy in a dashed note + edge labels.
 
 ### Flow clarity (so the story is obvious)
 

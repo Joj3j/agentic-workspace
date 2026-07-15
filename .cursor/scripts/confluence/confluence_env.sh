@@ -4,12 +4,15 @@
 # Usage (invoke first, then run Confluence scripts in the same shell):
 #   source .cursor/scripts/confluence_env.sh
 #   # or from repo root:
-#   source workspace-settings/.cursor/scripts/confluence_env.sh
+#   source agentic-workspace/.cursor/scripts/confluence_env.sh
 #
 # First time: copy confluence_env.local.example to confluence_env.local and set your values.
 # confluence_env.local is gitignored.
 
-SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+# Resolve directory containing this script. A plain ${BASH_SOURCE[0]%/*} breaks when the script is
+# sourced as `source confluence_env.sh` (no slash in BASH_SOURCE[0]) — LOCAL_FILE would never match.
+_script="${BASH_SOURCE[0]:-$0}"
+SCRIPT_DIR="$(cd -P "$(dirname "$_script")" && pwd)"
 LOCAL_FILE="${SCRIPT_DIR}/confluence_env.local"
 
 if [[ -f "$LOCAL_FILE" ]]; then

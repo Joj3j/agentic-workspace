@@ -25,7 +25,7 @@ Load a flat SR Linux config file onto an NE with automatic schema migration.
 - A flat config file: `set / ...` statements (produced by `info flat` or
   `save file running-config.txt text from running` on an SRL device).
 
-## Scripts and env (workspace-settings)
+## Scripts and env (agentic-workspace)
 
 | Artifact | Location |
 |----------|----------|
@@ -39,7 +39,7 @@ Load a flat SR Linux config file onto an NE with automatic schema migration.
 ### 1 — Set up env (once)
 
 ```bash
-cd workspace-settings/.cursor/scripts/srl-config-load
+cd agentic-workspace/.cursor/scripts/srl-config-load
 cp srl_config_env.local.example srl_config_env.local
 # Edit: SRL_USER, SRL_PASSWORD, SRL_SOURCE_VER, SRL_TARGET_VER
 source srl_config_env.sh
@@ -66,7 +66,7 @@ The script warns if `--ne-type` differs from the template's recorded `ne_type`.
 ### 3 — Dry-run: inspect and save the fixed file
 
 ```bash
-cd workspace-settings/.cursor/scripts/srl-config-load
+cd agentic-workspace/.cursor/scripts/srl-config-load
 python3 srl_load_config.py \
     --config /path/to/flat_config.cfg \
     --ne-ip <TARGET_NE_IP> \
@@ -75,7 +75,7 @@ python3 srl_load_config.py \
     --source-ne-ip <SOURCE_NE_IP> \
     --source-ver 25.10 \
     --target-ver 25.10 \
-    --save-template /home/joji/Go/workspace-settings/tools/srl-configs \
+    --save-template /home/joji/Go/agentic-workspace/tools/srl-configs \
     --dry-run
 ```
 
@@ -88,7 +88,7 @@ version without re-running the migration.
 ### 4 — Load onto the NE
 
 ```bash
-cd workspace-settings/.cursor/scripts/srl-config-load
+cd agentic-workspace/.cursor/scripts/srl-config-load
 python3 srl_load_config.py \
     --config /path/to/flat_config.cfg \
     --ne-ip <TARGET_NE_IP> \
@@ -99,9 +99,9 @@ python3 srl_load_config.py \
 Or, reusing a saved template from `tools/srl-configs/`:
 
 ```bash
-cd workspace-settings/.cursor/scripts/srl-config-load
+cd agentic-workspace/.cursor/scripts/srl-config-load
 python3 srl_load_config.py \
-    --config /home/joji/Go/workspace-settings/tools/srl-configs/<stem>_v2510_to_2510_fixed.cfg \
+    --config /home/joji/Go/agentic-workspace/tools/srl-configs/<stem>_v2510_to_2510_fixed.cfg \
     --ne-ip <OTHER_NE_IP> \
     --ne-id <OTHER_NE_ID> \
     --ne-type 7250-IXR-SRL \

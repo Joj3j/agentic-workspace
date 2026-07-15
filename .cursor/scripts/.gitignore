@@ -1,8 +1,14 @@
 # Local Confluence credentials; never commit
-confluence_env.local
+confluence/confluence_env.local
 
 # NSP OpenSearch / gateway credentials; never commit
-opensearch_env.local
+nsp-opensearch/opensearch_env.local
 
 # K8s test-client credentials; never commit
-k8s_test_env.local
+k8s-test-client/k8s_test_env.local
+
+# GitLab MR review credentials; never commit
+mr-review/gitlab_env.local
+
+# SRL config load credentials; never commit
+srl-config-load/srl_config_env.local
