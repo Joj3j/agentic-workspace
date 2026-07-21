@@ -7,7 +7,7 @@ description: Read a Confluence page via the REST API script. Use when the user a
 
 Use this skill when the user needs to **read** Confluence content only (summarize, quote, diff against local HTML, verify published text). The Nokia NSP Confluence MCP may be blocked by admin; this uses the Confluence REST API directly.
 
-**Create / publish pages:** use **`agentic-workspace/.cursor/skills/confluence-page/SKILL.md`** (`confluence_create_page.py`).
+**Create / publish pages:** use **`workspace-settings/.cursor/skills/confluence-page/SKILL.md`** (`confluence_create_page.py`).
 
 ---
 
@@ -16,7 +16,7 @@ Use this skill when the user needs to **read** Confluence content only (summariz
 Run scripts only after sourcing env vars **in the same terminal** (use the **IDE terminal** so credentials match your shell; avoid sandbox if env would be missing):
 
 ```bash
-cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh
+cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh
 ```
 
 This sources `confluence_env.local` (gitignored), which must export:
@@ -29,7 +29,7 @@ This sources `confluence_env.local` (gitignored), which must export:
 
 If `confluence_env.local` does not exist, tell the user:
 
-> Copy `confluence_env.local.example` → `confluence_env.local` (both under `agentic-workspace/.cursor/scripts/confluence/`), set the variables, then `source confluence_env.sh`.
+> Copy `confluence_env.local.example` → `confluence_env.local` (both under `workspace-settings/.cursor/scripts/confluence/`), set the variables, then `source confluence_env.sh`.
 
 These are the **same** variables and paths as the **confluence-page** skill.
 
@@ -39,9 +39,9 @@ These are the **same** variables and paths as the **confluence-page** skill.
 
 | Script | Path |
 |--------|------|
-| Read | `agentic-workspace/.cursor/scripts/confluence/confluence_read_page.py` |
-| Env loader | `agentic-workspace/.cursor/scripts/confluence/confluence_env.sh` |
-| Secrets template | `agentic-workspace/.cursor/scripts/confluence/confluence_env.local.example` → `confluence_env.local` |
+| Read | `workspace-settings/.cursor/scripts/confluence/confluence_read_page.py` |
+| Env loader | `workspace-settings/.cursor/scripts/confluence/confluence_env.sh` |
+| Secrets template | `workspace-settings/.cursor/scripts/confluence/confluence_env.local.example` → `confluence_env.local` |
 
 Always `cd` to `confluence/` (or use absolute paths) so `source confluence_env.sh` and `python3 confluence_read_page.py` run from the directory that contains both files.
 
@@ -52,7 +52,7 @@ Always `cd` to `confluence/` (or use absolute paths) so `source confluence_env.s
 ### By title and space
 
 ```bash
-cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh
+cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh
 python3 confluence_read_page.py --title "Page Title" --space-key NSPArchEvo
 ```
 
@@ -62,7 +62,7 @@ python3 confluence_read_page.py --title "Page Title" --space-key NSPArchEvo
 ### By page ID
 
 ```bash
-cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh
+cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh
 python3 confluence_read_page.py --page-id 123456789
 ```
 
@@ -78,7 +78,7 @@ From a URL `.../pages/viewpage.action?pageId=<ID>`: use `--page-id <ID>`.
 
 ### Agent steps
 
-1. `cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh`
+1. `cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh`
 2. Run `confluence_read_page.py` with `--title` / `--space-key` or `--page-id`, and optional `--format`.
 3. Treat **stdout** as the page content. If exit code is non-zero or stderr shows errors, report the error and do not treat stdout as authoritative.
 

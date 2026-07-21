@@ -2,7 +2,7 @@
 # Source K8s test-client env for k8s_run_test_client.sh
 #
 # Usage:
-#   cd agentic-workspace/.cursor/scripts && source k8s_test_env.sh
+#   cd workspace-settings/.cursor/scripts && source k8s_test_env.sh
 #
 # First time:
 #   cp k8s_test_env.local.example k8s_test_env.local
@@ -27,8 +27,8 @@ if [[ -z "$K8S_NODE_IP" ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
-# Repos are siblings of agentic-workspace under the Go workspace root.
-# SCRIPT_DIR = .../agentic-workspace/.cursor/scripts/k8s-test-client
+# Repos are siblings of workspace-settings under the Go workspace root.
+# SCRIPT_DIR = .../workspace-settings/.cursor/scripts/k8s-test-client
 # So ../../../../ = /home/joji/Go (or equivalent workspace root)
 export WORKSPACE_ROOT="${WORKSPACE_ROOT:-$(cd "${SCRIPT_DIR}/../../../.." && pwd)}"
 

@@ -195,7 +195,7 @@ bash k8s_run_test_client.sh --client comm-layer-benchmark -- \
 ## Prerequisites
 
 1. `k8s-test-client` env configured.
-2. `source /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client/k8s_test_env.sh`
+2. `source /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client/k8s_test_env.sh`
 3. `export WORKSPACE_ROOT=/home/joji/Go`
 4. `comm-layer-server` deployed in `nsp-communicator` with **bulking enabled**
    (`configwrite.bulking.enabled=true`). Confirm with `--status` below.
@@ -235,7 +235,7 @@ export SMOKE_NE_PROTOCOL=""    # gnmi or netconf
 ### Get NE — run (workspace script)
 
 ```bash
-cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
 source k8s_test_env.sh
 export WORKSPACE_ROOT=/home/joji/Go
 
@@ -278,7 +278,7 @@ the `ne_id` header):
 
 ```bash
 export SMOKE_NES="$(
-  cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+  cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
   source k8s_test_env.sh
   export WORKSPACE_ROOT=/home/joji/Go
   bash k8s_run_test_client.sh --client device-registry -- \
@@ -329,7 +329,7 @@ errors immediately.
 ### 2 — Check pod status
 
 ```bash
-cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
 source k8s_test_env.sh
 bash k8s_run_test_client.sh --status --client comm-layer-server
 ```
@@ -357,7 +357,7 @@ export SMOKE_READ_INTERVAL=0
 ### 4 — Run the smoke
 
 ```bash
-cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
 source k8s_test_env.sh
 export WORKSPACE_ROOT=/home/joji/Go
 
@@ -740,7 +740,7 @@ bash k8s_run_test_client.sh --client comm-layer-benchmark -- \
 ## Prerequisites
 
 1. `k8s-test-client` env configured.
-2. `source /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client/k8s_test_env.sh`
+2. `source /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client/k8s_test_env.sh`
 3. `export WORKSPACE_ROOT=/home/joji/Go`
 4. `comm-layer-server` deployed in `nsp-communicator` with **bulking enabled**
    (`configwrite.bulking.enabled=true`). Confirm with `--status` below.
@@ -780,7 +780,7 @@ export SMOKE_NE_PROTOCOL=""    # gnmi or netconf
 ### Get NE — run (workspace script)
 
 ```bash
-cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
 source k8s_test_env.sh
 export WORKSPACE_ROOT=/home/joji/Go
 
@@ -823,7 +823,7 @@ the `ne_id` header):
 
 ```bash
 export SMOKE_NES="$(
-  cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+  cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
   source k8s_test_env.sh
   export WORKSPACE_ROOT=/home/joji/Go
   bash k8s_run_test_client.sh --client device-registry -- \
@@ -874,7 +874,7 @@ errors immediately.
 ### 2 — Check pod status
 
 ```bash
-cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
 source k8s_test_env.sh
 bash k8s_run_test_client.sh --status --client comm-layer-server
 ```
@@ -896,7 +896,7 @@ export SMOKE_READ_INTERVAL=0
 ### 4 — Run the smoke
 
 ```bash
-cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
 source k8s_test_env.sh
 export WORKSPACE_ROOT=/home/joji/Go
 

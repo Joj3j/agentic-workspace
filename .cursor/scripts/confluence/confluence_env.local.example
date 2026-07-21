@@ -1,5 +1,5 @@
 # Copy to confluence_env.local (gitignored) and set values. Then:
-#   cd .../agentic-workspace/.cursor/scripts/confluence && source ./confluence_env.sh
+#   cd .../workspace-settings/.cursor/scripts/confluence && source ./confluence_env.sh
 
 export CONFLUENCE_BASE_URL="https://confluence.ext.net.nokia.com"
 export CONFLUENCE_USERNAME="your-atlassian-username"

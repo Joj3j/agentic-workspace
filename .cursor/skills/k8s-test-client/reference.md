@@ -12,7 +12,7 @@ in the 40000-49999 range based on the container gRPC port
 
 ### 2. Add env variable
 
-In `agentic-workspace/.cursor/scripts/k8s-test-client/k8s_test_env.local.example`, add:
+In `workspace-settings/.cursor/scripts/k8s-test-client/k8s_test_env.local.example`, add:
 
 ```bash
 NEW_FWD_PORT="4XXXX"        # new-service gRPC
@@ -51,7 +51,7 @@ In the new repo, create `bin/k8s_test.sh`:
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WORKSPACE_SCRIPTS="${SCRIPT_DIR}/../../agentic-workspace/.cursor/scripts"
+WORKSPACE_SCRIPTS="${SCRIPT_DIR}/../../workspace-settings/.cursor/scripts"
 source "${WORKSPACE_SCRIPTS}/k8s_test_env.sh"
 exec bash "${WORKSPACE_SCRIPTS}/k8s_run_test_client.sh" --client new-service "$@"
 ```

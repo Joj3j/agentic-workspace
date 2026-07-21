@@ -29,7 +29,7 @@ The following values **change per cluster** and must be discovered fresh each ti
 Server credentials live in `scripts/smoke-run-deployer/restconf_env.local` (gitignored).
 
 ```bash
-cd agentic-workspace/.cursor/scripts/smoke-run-deployer
+cd workspace-settings/.cursor/scripts/smoke-run-deployer
 cp restconf_env.local.example restconf_env.local
 # Edit restconf_env.local: set NSP_GATEWAY, NSP_USER, NSP_PASSWORD
 

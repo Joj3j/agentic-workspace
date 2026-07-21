@@ -57,7 +57,7 @@ stage it is relative to, or fall back to northbound/southbound for interface dir
 Before running either script, the Confluence env vars must be set **in the same terminal**:
 
 ```bash
-cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh
+cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh
 ```
 
 This sources `confluence_env.local` (gitignored) which must export:
@@ -76,10 +76,10 @@ If `confluence_env.local` does not exist, tell the user:
 
 | Script | Location |
 |--------|----------|
-| Read | `agentic-workspace/.cursor/scripts/confluence/confluence_read_page.py` |
-| Create | `agentic-workspace/.cursor/scripts/confluence/confluence_create_page.py` |
-| Env loader | `agentic-workspace/.cursor/scripts/confluence/confluence_env.sh` |
-| Secrets template | `agentic-workspace/.cursor/scripts/confluence/confluence_env.local.example` → copy to `confluence_env.local` (gitignored) |
+| Read | `workspace-settings/.cursor/scripts/confluence/confluence_read_page.py` |
+| Create | `workspace-settings/.cursor/scripts/confluence/confluence_create_page.py` |
+| Env loader | `workspace-settings/.cursor/scripts/confluence/confluence_env.sh` |
+| Secrets template | `workspace-settings/.cursor/scripts/confluence/confluence_env.local.example` → copy to `confluence_env.local` (gitignored) |
 
 ---
 
@@ -109,18 +109,18 @@ When **generating** a Confluence body (e.g. from an arch doc skill or user reque
 2. Place draw.io diagrams in `<repo>/docs/confluence/diagrams/`.
 3. Reference diagrams from the HTML body with relative links and Confluence upload instructions.
 
-**Do not** store generated HTML or diagrams in `agentic-workspace/docs/`.
+**Do not** store generated HTML or diagrams in `workspace-settings/docs/`.
 
 ---
 
 ## Read a page
 
-**Read-only** steps (title/space, page ID, `--format`, URL parsing, examples) are documented in **`agentic-workspace/.cursor/skills/confluence-read/SKILL.md`**. Use that skill when the user only needs to **read** or **summarize** a page—it shares this skill’s **prerequisites** and `confluence_read_page.py`.
+**Read-only** steps (title/space, page ID, `--format`, URL parsing, examples) are documented in **`workspace-settings/.cursor/skills/confluence-read/SKILL.md`**. Use that skill when the user only needs to **read** or **summarize** a page—it shares this skill’s **prerequisites** and `confluence_read_page.py`.
 
 Minimal invocation after sourcing env:
 
 ```bash
-cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh
+cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh
 python3 confluence_read_page.py --title "Page Title" --space-key NSPArchEvo
 ```
 
@@ -170,7 +170,7 @@ python3 confluence_create_page.py \
 
 ### Agent steps (write)
 
-1. Source env: `cd agentic-workspace/.cursor/scripts/confluence && source confluence_env.sh`
+1. Source env: `cd <workspace-settings>/.cursor/scripts/confluence && source confluence_env.sh`
 2. Determine the **parent page**:
    - If the user gave a parent page title or ID → use it.
    - If the context implies a known parent (e.g. arch pages use parent ID `2069174542`) → use it.

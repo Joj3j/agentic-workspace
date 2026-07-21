@@ -396,7 +396,7 @@ sequenceDiagram
 
 NSP arch Confluence pages should mirror **`arch-docs/docs/HLD/index.md`** (chapters 1–12): Architecture Overview → Sign-Off. When drafting `body.html`, verify every chapter has content or explicit N/A/TODO — not only the cloud-native-heavy sections.
 
-For **reviewing** an existing Confluence arch page against that template, use the **confluence-cloudnative-review** skill (`agentic-workspace/.cursor/skills/confluence-cloudnative-review/SKILL.md`), which includes an **HLD template coverage** pass in addition to cloud-native findings.
+For **reviewing** an existing Confluence arch page against that template, use the **confluence-cloudnative-review** skill (`workspace-settings/.cursor/skills/confluence-cloudnative-review/SKILL.md`), which includes an **HLD template coverage** pass in addition to cloud-native findings.
 
 ---
 
@@ -412,7 +412,7 @@ For **reviewing** an existing Confluence arch page against that template, use th
 | Device Registry HDD (local) | `device-registry/docs/actual/System_Design_HighLevel.md` |
 | Device Registry body (Confluence) | `device-registry/docs/confluence/body.html` |
 | Device Registry data flow draw.io | `device-registry/docs/confluence/diagrams/device_registry_data_flow_v1.drawio` |
-| Draw.io diagrams skill | `agentic-workspace/.cursor/skills/drawio-diagrams/SKILL.md` |
-| Confluence scripts | `agentic-workspace/.cursor/scripts/` |
+| Draw.io diagrams skill | `workspace-settings/.cursor/skills/drawio-diagrams/SKILL.md` |
+| Confluence scripts | `workspace-settings/.cursor/scripts/` |
 | Read template via script | `confluence_read_page.py --page-id 2162422282` |
 | Read Device Registry page | `confluence_read_page.py --title "Device Registry Arch" --space-key NSPArchEvo` |

@@ -104,4 +104,4 @@ ongoing `LIVE` updates.
 ## Reference
 
 Full runbook and verified sample output (including a real end-to-end run against the lab NE):
-[`comm-subscription-server/docs/actual/local-dev-live-demo.md`](/home/joji/Go/comm-subscription-server/docs/actual/local-dev-live-demo.md).
+[`comm-subscription-server/docs/actual/dev-live-run.md`](/home/joji/Go/comm-subscription-server/docs/actual/dev-live-run.md).

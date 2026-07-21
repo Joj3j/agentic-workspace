@@ -16,7 +16,7 @@ Skill: `.cursor/skills/srl-config-load/SKILL.md`.
 See [`k8s-test-client/`](k8s-test-client/) for scripts. Skill: `.cursor/skills/k8s-test-client/SKILL.md`.
 
 ```bash
-cd agentic-workspace/.cursor/scripts/k8s-test-client
+cd workspace-settings/.cursor/scripts/k8s-test-client
 cp k8s_test_env.local.example k8s_test_env.local   # first time only
 # Edit k8s_test_env.local: jump host IP, SSH user/key
 source k8s_test_env.sh
@@ -27,12 +27,23 @@ bash k8s_run_test_client.sh --client device-registry
 bash k8s_run_test_client.sh --client comm-worker-gnmi
 ```
 
+## Go repo: CI-parity delta coverage
+
+See [`build-go-repo/`](build-go-repo/) for scripts. Skill: `.cursor/skills/build-go-repo/SKILL.md`.
+
+```bash
+# From any .go-make repo root (e.g. comm-worker-gnmi-go):
+bash workspace-settings/.cursor/scripts/build-go-repo/delta_coverage_check.sh
+```
+
+Uses `BUILDER=docker make test` + `build-unittest-coverage-delta:1` — matches Jenkins (not host `gocover-cobertura`).
+
 ## NSP OpenSearch: error log reports
 
 See [`nsp-opensearch/`](nsp-opensearch/) for scripts. Skill: `.cursor/skills/nsp-opensearch/SKILL.md`.
 
 ```bash
-cd agentic-workspace/.cursor/scripts/nsp-opensearch
+cd workspace-settings/.cursor/scripts/nsp-opensearch
 cp opensearch_env.local.example opensearch_env.local   # first time only
 # Edit: NSP_GATEWAY, NSP_USER, NSP_PASSWORD (optional: NSP_OPENSEARCH_PORT, NSP_VERIFY_TLS=0)
 source opensearch_env.sh
@@ -54,7 +65,7 @@ See [`confluence/`](confluence/) for scripts.
 Both use the same `confluence_env.sh` / `confluence_env.local` in `confluence/`.
 
 ```bash
-cd agentic-workspace/.cursor/scripts/confluence
+cd workspace-settings/.cursor/scripts/confluence
 cp confluence_env.local.example confluence_env.local   # first time only
 # Edit confluence_env.local: CONFLUENCE_BASE_URL, CONFLUENCE_USERNAME, CONFLUENCE_API_TOKEN
 source confluence_env.sh

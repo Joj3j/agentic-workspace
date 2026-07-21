@@ -2,7 +2,7 @@
 # Source RESTCONF / NSP gateway env for smoke_restconf.py
 #
 # Usage:
-#   cd agentic-workspace/.cursor/scripts/smoke-run-deployer
+#   cd workspace-settings/.cursor/scripts/smoke-run-deployer
 #   source restconf_env.sh
 #
 # First time:

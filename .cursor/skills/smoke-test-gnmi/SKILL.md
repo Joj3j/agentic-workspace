@@ -50,7 +50,7 @@ each round, 50 RPCs total.
 ## Prerequisites
 
 1. `k8s-test-client` skill env is configured (see that skill's SKILL.md).
-2. `source agentic-workspace/.cursor/scripts/k8s-test-client/k8s_test_env.sh`
+2. `source workspace-settings/.cursor/scripts/k8s-test-client/k8s_test_env.sh`
 3. `export WORKSPACE_ROOT=/home/joji/Go`
 
 ## Agent steps
@@ -65,7 +65,7 @@ make test_client
 ### 2 — Check pod status
 
 ```bash
-cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
 source k8s_test_env.sh
 bash k8s_run_test_client.sh --status --client comm-worker-gnmi
 ```
@@ -77,7 +77,7 @@ Expected: pod `comm-worker-gnmi-*` in `STATUS=Running`, `RESTARTS` low.
 Preferred (uses the wrapper with the `sleep 1` tunnel-ready fix):
 
 ```bash
-cd /home/joji/Go/agentic-workspace/.cursor/scripts/k8s-test-client
+cd /home/joji/Go/workspace-settings/.cursor/scripts/k8s-test-client
 source k8s_test_env.sh
 export WORKSPACE_ROOT=/home/joji/Go
 printf '17\n19\n' | bash k8s_run_test_client.sh --client comm-worker-gnmi 2>&1

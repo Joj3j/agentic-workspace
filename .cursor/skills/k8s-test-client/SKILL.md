@@ -30,7 +30,7 @@ changes needed.
 | comm-worker-gnmi | nsp-communicator | 9001 | 40051 | `bin/worker_test_client` |
 | comm-subscription-server | nsp-communicator | 50056 | 40056 | `bin/subscription_test_client` |
 
-## Scripts and env (agentic-workspace)
+## Scripts and env (workspace-settings)
 
 | Artifact | Location |
 |----------|----------|
@@ -43,7 +43,7 @@ changes needed.
 ### 1 -- Set up environment (once)
 
 ```bash
-cd agentic-workspace/.cursor/scripts/k8s-test-client
+cd workspace-settings/.cursor/scripts/k8s-test-client
 cp k8s_test_env.local.example k8s_test_env.local
 # Edit k8s_test_env.local: jump host IP, SSH user/key
 source k8s_test_env.sh
@@ -52,7 +52,7 @@ source k8s_test_env.sh
 ### 2 -- Check pods are running
 
 ```bash
-cd agentic-workspace/.cursor/scripts/k8s-test-client
+cd workspace-settings/.cursor/scripts/k8s-test-client
 bash k8s_run_test_client.sh --status --client comm-layer-server
 bash k8s_run_test_client.sh --status --client device-registry
 bash k8s_run_test_client.sh --status --client comm-worker-gnmi
@@ -62,7 +62,7 @@ bash k8s_run_test_client.sh --status --client comm-subscription-server
 ### 3 -- Run a test client
 
 ```bash
-cd agentic-workspace/.cursor/scripts/k8s-test-client
+cd workspace-settings/.cursor/scripts/k8s-test-client
 
 # comm-layer-server
 bash k8s_run_test_client.sh --client comm-layer-server

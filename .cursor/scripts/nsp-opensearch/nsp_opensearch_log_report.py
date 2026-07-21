@@ -433,7 +433,7 @@ def markdown_report(
             lines.append("")
     lines.append("---")
     lines.append("")
-    lines.append("*Report produced by `nsp_opensearch_log_report.py` (agentic-workspace).*")
+    lines.append("*Report produced by `nsp_opensearch_log_report.py` (workspace-settings).*")
     lines.append("")
     return "\n".join(lines)
 

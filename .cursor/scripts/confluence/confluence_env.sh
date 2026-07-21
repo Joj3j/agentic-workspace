@@ -4,7 +4,7 @@
 # Usage (invoke first, then run Confluence scripts in the same shell):
 #   source .cursor/scripts/confluence_env.sh
 #   # or from repo root:
-#   source agentic-workspace/.cursor/scripts/confluence_env.sh
+#   source workspace-settings/.cursor/scripts/confluence_env.sh
 #
 # First time: copy confluence_env.local.example to confluence_env.local and set your values.
 # confluence_env.local is gitignored.

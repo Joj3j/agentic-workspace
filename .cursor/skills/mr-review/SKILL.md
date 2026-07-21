@@ -258,7 +258,7 @@ export GITLAB_TOKEN="$GO_GIT_PAT"
 
 ```bash
 GITLAB_TOKEN=$GO_GIT_PAT python3 \
-  /home/joji/Go/agentic-workspace/.cursor/scripts/mr-review/post_review.py \
+  /home/joji/Go/workspace-settings/.cursor/scripts/mr-review/post_review.py \
   --review /path/to/REVIEW_MR<IID>.md \
   --mr-url http://<host>/<namespace>/<project>/-/merge_requests/<iid> \
   --dry-run
@@ -272,7 +272,7 @@ user and ask: *"Does this look right? Should I post these findings?"*
 
 ```bash
 GITLAB_TOKEN=$GO_GIT_PAT python3 \
-  /home/joji/Go/agentic-workspace/.cursor/scripts/mr-review/post_review.py \
+  /home/joji/Go/workspace-settings/.cursor/scripts/mr-review/post_review.py \
   --review /path/to/REVIEW_MR<IID>.md \
   --mr-url http://<host>/<namespace>/<project>/-/merge_requests/<iid>
 # The script prompts "Post N findings? [y/N]" as a second gate.

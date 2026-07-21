@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """srl_load_config.py — Load a flat SR Linux config file onto an SRL NE.
 
-Location: agentic-workspace/.cursor/scripts/srl-config-load/
+Location: workspace-settings/.cursor/scripts/srl-config-load/
 
 Always strips NE-specific lines before pushing:
   - system0 interface address  (preserves target NE's own NE ID)
@@ -23,7 +23,7 @@ Usage:
         --source-ne-ip <SOURCE_NE_IP> \\
         [--source-ver 25.10] [--target-ver 25.10] \\
         [--output-dir /tmp] \\
-        [--save-template /home/joji/Go/agentic-workspace/tools/srl-configs] \\
+        [--save-template /home/joji/Go/workspace-settings/tools/srl-configs] \\
         [--dry-run] [--no-save-startup]
 
 Environment variables (loaded from srl_config_env.local if present):
@@ -37,12 +37,12 @@ Template workflow:
     python3 srl_load_config.py --config source.cfg \\
         --ne-ip <SOURCE_IP> --ne-id <NE_ID> --ne-type 7250-IXR-SRL \\
         --source-ne-ip <SOURCE_IP> --source-ver 25.10 --target-ver 25.10 \\
-        --save-template /home/joji/Go/agentic-workspace/tools/srl-configs \\
+        --save-template /home/joji/Go/workspace-settings/tools/srl-configs \\
         --dry-run
 
     # 2. Restore the template to any NE of the same type:
     python3 srl_load_config.py \\
-        --config /home/joji/Go/agentic-workspace/tools/srl-configs/<stem>_v2510_to_2510_fixed.cfg \\
+        --config /home/joji/Go/workspace-settings/tools/srl-configs/<stem>_v2510_to_2510_fixed.cfg \\
         --ne-ip <OTHER_NE_IP> --ne-id <OTHER_NE_ID> --ne-type 7250-IXR-SRL \\
         --source-ver 25.10 --target-ver 25.10
 
